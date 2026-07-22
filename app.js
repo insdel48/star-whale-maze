@@ -80,6 +80,7 @@
   };
 
   let audioContext = null, installPrompt = null;
+  let narrationActive = false, narrationToken = 0, chineseVoice = null;
 
   function mulberry32(seed) {
     return function random() {
@@ -429,6 +430,7 @@
   }
 
   function startChapter(chapterIndex = state.chapter) {
+    stopNarration();
     state.chapter = chapterIndex;
     state.seed = (state.seed + 104729) % 2147483647;
     const rng = mulberry32(state.seed + chapterIndex * 99991 + state.difficulty * 7127);
@@ -448,6 +450,7 @@
     state.found = new Set(); state.trail = [state.current]; state.steps = 0;
     state.completed = false; state.dragging = false; state.activePointerId = null;
     state.touchPoint = null; state.touchValid = true; state.hintPath = []; state.overview = false;
+    $(".story-card").classList.remove("overview-mode");
     $("#overviewButton").setAttribute("aria-pressed", "false");
     localStorage.setItem("starmaze-chapter", state.chapter);
     updateStoryUI();
@@ -740,8 +743,17 @@
 
   function drawTrail() {
     if(state.trail.length<2&&state.hintPath.length<2)return;
-    ctx.save();ctx.strokeStyle=state.graph.illustrated?"rgba(255,224,139,.72)":"rgba(220,116,93,.72)";ctx.lineWidth=state.graph.illustrated?Math.max(2,state.avgEdge*.035):Math.max(3,state.avgEdge*.075);ctx.lineCap="round";ctx.setLineDash(state.graph.illustrated?[1,11]:[2,7]);
-    if(state.trail.length>1)for(let i=1;i<state.trail.length;i+=1){edgeCurve(state.graph.nodes[state.trail[i-1]],state.graph.nodes[state.trail[i]]);ctx.stroke();}
+    ctx.save();ctx.lineCap="round";ctx.lineJoin="round";
+    if(state.trail.length>1&&state.graph.illustrated){
+      const trailOuter=Math.max(7,Math.min(13,state.avgEdge*.12));
+      ctx.strokeStyle="rgba(11,39,43,.62)";ctx.lineWidth=trailOuter;ctx.setLineDash([]);
+      for(let i=1;i<state.trail.length;i+=1){edgeCurve(state.graph.nodes[state.trail[i-1]],state.graph.nodes[state.trail[i]]);ctx.stroke();}
+      ctx.strokeStyle="rgba(255,202,74,.92)";ctx.lineWidth=Math.max(3.5,trailOuter*.46);ctx.shadowColor="rgba(255,219,111,.72)";ctx.shadowBlur=7;
+      for(let i=1;i<state.trail.length;i+=1){edgeCurve(state.graph.nodes[state.trail[i-1]],state.graph.nodes[state.trail[i]]);ctx.stroke();}
+    } else if(state.trail.length>1){
+      ctx.strokeStyle="rgba(220,116,93,.78)";ctx.lineWidth=Math.max(3,state.avgEdge*.075);ctx.setLineDash([2,7]);
+      for(let i=1;i<state.trail.length;i+=1){edgeCurve(state.graph.nodes[state.trail[i-1]],state.graph.nodes[state.trail[i]]);ctx.stroke();}
+    }
     if(state.hintPath.length>1){ctx.strokeStyle="#f4a928";ctx.lineWidth=Math.max(7,state.avgEdge*.2);ctx.setLineDash([9,5]);ctx.shadowColor="#fff2a1";ctx.shadowBlur=12;for(let i=1;i<state.hintPath.length;i+=1){edgeCurve(state.graph.nodes[state.hintPath[i-1]],state.graph.nodes[state.hintPath[i]]);ctx.stroke();}}
     ctx.restore();
   }
@@ -754,7 +766,7 @@
 
   function illustratedMarker(nodeId, kind, locked = false) {
     const p = screenPoint(state.graph.nodes[nodeId]);
-    const base = Math.max(13, Math.min(22, state.avgEdge * .22));
+    const base = Math.max(17, Math.min(28, state.avgEdge * .29)) * (kind === "goal" ? 1.12 : 1);
     if (!isVisible(p, base * 4)) return;
     const pulse = .5 + Math.sin(performance.now() / 430 + nodeId) * .5;
     ctx.save();
@@ -766,19 +778,25 @@
       ctx.shadowColor = "transparent"; ctx.fillStyle = "#67412d";
       ctx.fillRect(p.x - base * .42, p.y + base * .61, base * .25, base * .18); ctx.fillRect(p.x + base * .17, p.y + base * .61, base * .25, base * .18);
     } else {
-      const color = kind === "goal" ? (locked ? "#8ca7a6" : "#82dce7") : "#ffd86c";
-      ctx.shadowColor = color; ctx.shadowBlur = 14 + pulse * 12; ctx.strokeStyle = color; ctx.lineWidth = Math.max(2, base * .12);
-      ctx.globalAlpha = .7 + pulse * .25; ctx.beginPath(); ctx.arc(p.x, p.y, base * (1.1 + pulse * .22), 0, Math.PI * 2); ctx.stroke();
-      ctx.globalAlpha = 1; ctx.fillStyle = color; ctx.beginPath(); ctx.arc(p.x, p.y, base * .18, 0, Math.PI * 2); ctx.fill();
-      for (let ray = 0; ray < 6; ray += 1) {
-        const angle = ray * Math.PI / 3 + pulse * .15;
-        ctx.beginPath(); ctx.moveTo(p.x + Math.cos(angle) * base * .55, p.y + Math.sin(angle) * base * .55);
-        ctx.lineTo(p.x + Math.cos(angle) * base * .82, p.y + Math.sin(angle) * base * .82); ctx.stroke();
+      const color = kind === "goal" ? (locked ? "#b8d8d5" : "#6eeeff") : "#ffd451";
+      const icon = kind === "goal" ? chapters[state.chapter].goal : chapters[state.chapter].item;
+      ctx.shadowColor = color; ctx.shadowBlur = 19 + pulse * 10; ctx.strokeStyle = color; ctx.lineWidth = Math.max(2.5, base * .13);
+      ctx.globalAlpha = .82; ctx.beginPath(); ctx.arc(p.x, p.y, base * (1.2 + pulse * .16), 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = .48; ctx.beginPath(); ctx.arc(p.x, p.y, base * .94, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
+      ctx.globalAlpha = 1; ctx.shadowColor = "rgba(0,0,0,.34)"; ctx.shadowBlur = 7; ctx.fillStyle = "rgba(8,32,38,.9)";
+      ctx.beginPath(); ctx.arc(p.x, p.y, base * .69, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,.9)"; ctx.lineWidth = Math.max(2, base * .09); ctx.stroke();
+      ctx.shadowColor = color; ctx.shadowBlur = 11; ctx.font = `${base * .88}px "Apple Color Emoji",sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(icon,p.x,p.y+1);
+      ctx.strokeStyle = color; ctx.lineWidth = Math.max(2, base * .1);
+      for (let ray = 0; ray < 8; ray += 1) {
+        const angle = ray * Math.PI / 4 + pulse * .12;
+        ctx.beginPath(); ctx.moveTo(p.x + Math.cos(angle) * base * .92, p.y + Math.sin(angle) * base * .92);
+        ctx.lineTo(p.x + Math.cos(angle) * base * 1.13, p.y + Math.sin(angle) * base * 1.13); ctx.stroke();
       }
       if (kind === "goal" && locked) {
         ctx.shadowColor = "rgba(0,0,0,.45)"; ctx.shadowBlur = 5; ctx.fillStyle = "rgba(9,35,42,.88)";
-        ctx.beginPath(); ctx.roundRect(p.x - base * .38, p.y - base * .22, base * .76, base * .7, base * .12); ctx.fill();
-        ctx.strokeStyle = "#dce8dc"; ctx.lineWidth = Math.max(1.5, base * .1); ctx.beginPath(); ctx.arc(p.x, p.y - base * .2, base * .25, Math.PI, 0); ctx.stroke();
+        ctx.beginPath(); ctx.roundRect(p.x + base * .28, p.y + base * .19, base * .58, base * .54, base * .12); ctx.fill();
+        ctx.strokeStyle = "#f2fff6"; ctx.lineWidth = Math.max(1.5, base * .08); ctx.beginPath(); ctx.arc(p.x + base * .57, p.y + base * .2, base * .18, Math.PI, 0); ctx.stroke();
       }
     }
     ctx.restore();
@@ -897,7 +915,72 @@
   }
 
   function showToast(message,duration=3000){const toast=$("#storyToast");toast.textContent=message;toast.classList.add("show");clearTimeout(state.toastTimer);state.toastTimer=setTimeout(()=>toast.classList.remove("show"),duration);}
+
+  function findChineseVoice() {
+    if (!("speechSynthesis" in window)) return null;
+    const voices = window.speechSynthesis.getVoices();
+    chineseVoice = voices.find((voice)=>/^zh[-_]CN$/i.test(voice.lang))
+      || voices.find((voice)=>/^zh/i.test(voice.lang))
+      || null;
+    return chineseVoice;
+  }
+
+  function setNarrationState(active) {
+    narrationActive = active;
+    document.querySelectorAll(".narration-button").forEach((button)=>{
+      button.classList.toggle("is-speaking", active);
+      button.setAttribute("aria-pressed", String(active));
+      const label = button.querySelector(".read-label");
+      if (label) label.textContent = active ? "停止" : button.dataset.readLabel;
+    });
+    $("#readButton").setAttribute("aria-label", active ? "停止朗读" : "朗读这一页");
+  }
+
+  function stopNarration() {
+    narrationToken += 1;
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    setNarrationState(false);
+  }
+
+  function speakText(text) {
+    if (narrationActive) { stopNarration(); return; }
+    if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) {
+      showToast("这台浏览器暂时不能朗读，请换用平板自带的 Safari 或 Chrome。", 3200);
+      return;
+    }
+    const cleanText = text.replace(/\s+/g, " ").trim();
+    if (!cleanText) return;
+    window.speechSynthesis.cancel();
+    const token = ++narrationToken;
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = "zh-CN";
+    utterance.rate = .88;
+    utterance.pitch = 1.04;
+    utterance.volume = 1;
+    utterance.voice = chineseVoice || findChineseVoice();
+    utterance.onend = ()=>{ if (token === narrationToken) setNarrationState(false); };
+    utterance.onerror = ()=>{ if (token === narrationToken) setNarrationState(false); };
+    setNarrationState(true);
+    window.speechSynthesis.speak(utterance);
+  }
+
+  function currentPageNarration() {
+    const chapter = chapters[state.chapter];
+    const tip = $("#storyTip span")?.textContent || "";
+    const found = state.found.size ? `已经找到 ${state.found.size} 件宝物。` : "宝物还在迷宫里等你。";
+    return `第 ${state.chapter + 1} 章，${chapter.title}。${chapter.story}。这一页的任务：${chapter.mission}。${found}${tip}。玩法提示：按住阿洛，沿着发光小路慢慢拖动。`;
+  }
+
+  function introNarration() {
+    return "故事开始了。那天晚上，一颗星星落进了雨里。阿洛在窗外发现一只迷路的小星鲸。它的五盏星灯散落在奇怪的世界里。只有穿过所有迷宫，才能送它回到天空。按住阿洛，沿发光边界内拖动。先找齐这一页的宝物。";
+  }
+
+  function winNarration() {
+    return `${$("#winKicker").textContent}。${$("#winTitle").textContent}。${$("#winStory").textContent}`;
+  }
+
   function completeChapter(){
+    stopNarration();
     state.completed=true;const chapter=chapters[state.chapter];state.unlocked=Math.max(state.unlocked,Math.min(state.chapter+1,chapters.length-1));localStorage.setItem("starmaze-unlocked",state.unlocked);
     $("#winScene").textContent="";$("#winScene").style.backgroundImage=`url('./assets/scenes/${sceneImageFiles[chapter.theme]}')`;$("#winKicker").textContent=chapter.winKicker;$("#winTitle").textContent=chapter.winTitle;$("#winStory").textContent=chapter.winStory;$("#winSteps").textContent=state.steps;$("#winTreasures").textContent=state.found.size;
     $("#nextChapterButton").innerHTML=state.chapter<chapters.length-1?'翻到下一页 <span>→</span>':'从故事开头再读一遍 <span>↻</span>';
@@ -947,12 +1030,15 @@
   window.addEventListener("resize",resizeCanvas);
 
   $("#storyButton").addEventListener("click",()=>$("#introDialog").showModal());
+  $("#readButton").addEventListener("click",()=>speakText(currentPageNarration()));
+  $("#introReadButton").addEventListener("click",()=>speakText(introNarration()));
+  $("#winReadButton").addEventListener("click",()=>speakText(winNarration()));
   $("#chapterButton").addEventListener("click",()=>{updateChapterList();$("#chapterDialog").showModal();});
   $("#difficultyButton").addEventListener("click",()=>$("#difficultyDialog").showModal());
   $("#installButton").addEventListener("click",openInstallHelp);$("#outsideButton").addEventListener("click",openInstallHelp);
-  $("#overviewButton").addEventListener("click",()=>{state.overview=!state.overview;$("#overviewButton").setAttribute("aria-pressed",String(state.overview));$("#overviewButton b").textContent=state.overview?"返回":"全图";if(!state.overview)centerCameraOnCurrent(true);updateAverageEdge();showToast(state.overview?"现在看到的是完整世界，再点一次回到阿洛身边。":"回到阿洛身边，继续沿路探险。",1800);draw();});
+  $("#overviewButton").addEventListener("click",()=>{state.overview=!state.overview;$(".story-card").classList.toggle("overview-mode",state.overview);$("#overviewButton").setAttribute("aria-pressed",String(state.overview));$("#overviewButton b").textContent=state.overview?"返回":"全图";if(!state.overview)centerCameraOnCurrent(true);updateAverageEdge();showToast(state.overview?"现在看到的是完整世界，再点一次回到阿洛身边。":"回到阿洛身边，继续沿路探险。",1800);draw();});
   $("#hintButton").addEventListener("click",showHint);$("#newMazeButton").addEventListener("click",()=>startChapter());
-  document.querySelectorAll("[data-close]").forEach((button)=>button.addEventListener("click",()=>{const dialog=$(`#${button.dataset.close}`);dialog.close();if(button.dataset.close==="introDialog")localStorage.setItem("starmaze-intro","seen");}));
+  document.querySelectorAll("[data-close]").forEach((button)=>button.addEventListener("click",()=>{stopNarration();const dialog=$(`#${button.dataset.close}`);dialog.close();if(button.dataset.close==="introDialog")localStorage.setItem("starmaze-intro","seen");}));
   $("#soundButton").setAttribute("aria-pressed",String(state.sound));
   $("#soundButton").addEventListener("click",()=>{state.sound=!state.sound;localStorage.setItem("starmaze-sound",state.sound?"on":"off");$("#soundButton").setAttribute("aria-pressed",String(state.sound));$("#soundButton").setAttribute("aria-label",state.sound?"关闭声音":"打开声音");if(state.sound)playTone(660,.12,"sine",.04);});
   document.querySelectorAll("#difficultyList button").forEach((button)=>{
@@ -966,6 +1052,8 @@
   window.addEventListener("beforeinstallprompt",(event)=>{event.preventDefault();installPrompt=event;updateInstallStatus();});
   $("#installAppButton").addEventListener("click",async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;updateInstallStatus();});
   window.addEventListener("appinstalled",()=>{installPrompt=null;updateInstallStatus();});
+  if("speechSynthesis" in window){findChineseVoice();window.speechSynthesis.addEventListener?.("voiceschanged",findChineseVoice);}
+  window.addEventListener("pagehide",stopNarration);
   if("serviceWorker" in navigator&&location.protocol!=="file:")window.addEventListener("load",async()=>{try{const registration=await navigator.serviceWorker.register("./sw.js");registration.update().catch(()=>{});}catch(_){/* The installed game may start while offline. */}});
   startChapter();
   if(!localStorage.getItem("starmaze-intro"))setTimeout(()=>$("#introDialog").showModal(),550);
