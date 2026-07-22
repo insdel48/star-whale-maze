@@ -8,10 +8,10 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="星鲸迷宫" />
     <meta name="description" content="一部可以玩的儿童迷宫冒险绘本" />
-    <link rel="manifest" href="manifest.webmanifest?v=19" />
+    <link rel="manifest" href="manifest.webmanifest?v=22" />
     <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png" />
     <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css?v=19" />
+    <link rel="stylesheet" href="styles.css?v=22" />
     <title>阿洛与星鲸 · 迷宫绘本</title>
   </head>
   <body>
@@ -24,6 +24,7 @@
           <span><small>一本可以玩的冒险绘本</small><strong>阿洛与星鲸</strong></span>
         </button>
         <div class="header-actions">
+          <button class="round-button narration-button header-read-button" id="readButton" type="button" aria-label="朗读这一页" aria-pressed="false" data-read-label="朗读"><span aria-hidden="true">🔊</span><b class="read-label">朗读</b></button>
           <button class="round-button" id="soundButton" type="button" aria-label="关闭声音" aria-pressed="true"><span class="on">♪</span><span class="off">×</span></button>
           <button class="round-button" id="installButton" type="button" aria-label="带到外面玩">⌂</button>
           <button class="round-button" id="chapterButton" type="button" aria-label="选择故事章节">☷</button>
@@ -94,6 +95,7 @@
         <p class="eyebrow">故事开始了</p>
         <h2>那天晚上，<br />一颗星星落进了雨里</h2>
         <p>阿洛在窗外发现一只迷路的小星鲸。它的五盏星灯散落在奇怪的世界里。只有穿过所有迷宫，才能送它回到天空。</p>
+        <button class="story-read-button narration-button" id="introReadButton" type="button" aria-label="朗读故事开头" aria-pressed="false" data-read-label="听故事"><span aria-hidden="true">🔊</span><b class="read-label">听故事</b></button>
         <div class="intro-rule"><span>☝</span><b>按住阿洛，沿发光边界内拖动</b></div>
         <div class="intro-rule"><span>✦</span><b>先找齐这一页的宝物</b></div>
         <button class="primary-button" data-close="introDialog">穿上雨衣，出发！</button>
@@ -146,12 +148,13 @@
         <p class="eyebrow" id="winKicker">第一盏星灯亮了</p>
         <h2 id="winTitle">森林记住了阿洛的名字</h2>
         <p id="winStory">树木让开一条路，远处传来齿轮转动的声音。</p>
+        <button class="story-read-button narration-button" id="winReadButton" type="button" aria-label="朗读这一页的结尾" aria-pressed="false" data-read-label="听结尾"><span aria-hidden="true">🔊</span><b class="read-label">听结尾</b></button>
         <div class="win-stats"><span><b id="winSteps">0</b> 步</span><span><b id="winTreasures">3</b> 件宝物</span></div>
         <button class="primary-button" id="nextChapterButton">翻到下一页 <span>→</span></button>
         <button class="text-button" id="replayButton">再走一次这座迷宫</button>
       </article>
     </dialog>
 
-    <script src="app.js?v=19" defer></script>
+    <script src="app.js?v=22" defer></script>
   </body>
 </html>
