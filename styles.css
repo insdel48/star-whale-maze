@@ -105,14 +105,9 @@ button:focus-visible { outline: 4px solid rgba(240,186,86,.7); outline-offset: 3
 .confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .confetti i { position: absolute; top: -10%; width: 9px; height: 16px; border-radius: 2px; animation: fall 1.7s ease-in forwards; }
 
-.game-footer { min-height: 122px; display: grid; grid-template-columns: minmax(170px,1fr) auto minmax(170px,1fr); gap: 20px; align-items: center; padding: 13px 22px; background: linear-gradient(100deg,#faf2df,#eee2cb); border-top: 1px solid #d4c5a9; }
+.game-footer { min-height: 68px; display: grid; grid-template-columns: minmax(170px,1fr) auto; gap: 20px; align-items: center; padding: 10px 22px; background: linear-gradient(100deg,#faf2df,#eee2cb); border-top: 1px solid #d4c5a9; }
 .story-tip { max-width: 230px; color: var(--muted); font-size: 13px; line-height: 1.45; }
 .story-tip small { display: block; width: max-content; margin-bottom: 3px; padding: 2px 7px; color: #fff; background: var(--coral); border-radius: 99px; font-size: 9px; letter-spacing: .1em; }
-.controls { display: grid; grid-template: repeat(3, 45px) / repeat(3, 50px); gap: 4px; place-items: center; }
-.move-button { width: 48px; height: 44px; padding: 0; color: #fff5d5; border: 1px solid rgba(255,255,255,.3); border-radius: 12px; background: linear-gradient(#477f85,#285b65); box-shadow: 0 4px 0 #173e48, 0 7px 15px rgba(16,43,50,.18); font: 900 17px/1 sans-serif; cursor: pointer; }
-.move-button:active { transform: translateY(3px); box-shadow: 0 1px 0 #315a68; }
-.move-button.up { grid-area: 1/2; } .move-button.left { grid-area: 2/1; } .move-button.right { grid-area: 2/3; } .move-button.down { grid-area: 3/2; }
-.compass { grid-area: 2/2; color: var(--coral); font-size: 20px; }
 .tool-buttons { justify-self: end; display: grid; gap: 8px; }
 .tool-buttons button { min-width: 128px; min-height:44px; padding: 9px 11px; text-align: left; color: #355c68; border: 1px solid #c3d4ce; border-radius: 12px; background: #e9f0e6; font-size: 12px; font-weight: 700; cursor: pointer; }
 .tool-buttons span { display: inline-block; width: 23px; color: var(--coral); font: 900 18px/1 sans-serif; }
@@ -205,8 +200,6 @@ button:focus-visible { outline: 4px solid rgba(240,186,86,.7); outline-offset: 3
   .drag-hint { bottom: 22px; padding: 11px 18px; }
   .drag-hint span { font-size: 25px; }
   .drag-hint b { font-size: 14px; }
-  .controls { grid-template: repeat(3, 55px) / repeat(3, 60px); gap: 5px; }
-  .move-button { width: 58px; height: 54px; border-radius: 16px; font-size: 21px; }
   .tool-buttons button { min-height: 52px; padding: 10px 13px; font-size: 13px; }
   .difficulty-button, .outside-button { min-height: 48px; padding-left: 16px; padding-right: 16px; }
   .dialog-close { width: 52px; height: 52px; }
@@ -221,14 +214,10 @@ button:focus-visible { outline: 4px solid rgba(240,186,86,.7); outline-offset: 3
 
 @media (orientation: landscape) and (max-height: 900px) and (min-width: 768px) {
   .brand-moon, .round-button { min-width: 54px; min-height: 54px; }
-  .controls { grid-template: repeat(3, 55px) / repeat(3, 60px); gap: 5px; }
-  .move-button { width: 58px; height: 54px; border-radius: 16px; }
   .tool-buttons button, .difficulty-button, .outside-button { min-height: 48px; }
 }
 
 @media (min-width: 700px) and (max-width: 1100px) {
-  .controls { grid-template: repeat(3, 55px) / repeat(3, 60px); gap: 5px; }
-  .move-button { width: 58px; height: 54px; border-radius: 16px; }
   .tool-buttons button, .difficulty-button, .outside-button { min-height: 48px; }
 }
 
@@ -240,7 +229,7 @@ button:focus-visible { outline: 4px solid rgba(240,186,86,.7); outline-offset: 3
   .chapter-copy #chapterStory { font-size: 11px; }
   .mission-ribbon { padding: 8px 13px; }.mission-icon { display: none; }
   .maze-stage { min-height: 390px; height: 56vh; }
-  .game-footer { grid-template-columns: auto 1fr auto; gap: 8px; padding: 10px; }
+  .game-footer { grid-template-columns: 1fr auto; gap: 8px; padding: 10px; }
   .story-tip { width: 54px; font-size: 0; }.story-tip small { font-size: 9px; }
   .tool-buttons button { min-width: 0; width: 42px; height: 40px; padding: 8px; font-size: 0; text-align: center; }.tool-buttons span { width: auto; font-size: 20px; }
   .world-hud { top:8px; right:8px; }.mini-map-wrap { width:112px; height:66px; }.mini-map-wrap #miniMap { width:106px; height:60px; } #overviewButton { width:44px; }
@@ -286,14 +275,14 @@ button:focus-visible { outline: 4px solid rgba(240,186,86,.7); outline-offset: 3
 
 /* 触控目标：无论指针类型，核心交互按钮保底 48px */
 .brand, .round-button, #overviewButton,
-.move-button, .tool-buttons button,
+.tool-buttons button,
 .difficulty-button, .outside-button,
 .dialog-close, .primary-button, .text-button,
 .chapter-list button, .difficulty-list button { min-height: 48px; }
 .round-button, .brand-moon, .dialog-close { min-width: 48px; }
 
 /* 温和按压反馈：统一短回弹，不跳位置 */
-.round-button, .move-button, .tool-buttons button,
+.round-button, .tool-buttons button,
 .difficulty-button, .outside-button, .primary-button,
 .chapter-list button, .difficulty-list button {
   transition: transform .12s ease, box-shadow .12s ease, background-color .2s ease;
@@ -429,7 +418,6 @@ button:focus-visible { outline: 4px solid rgba(240,186,86,.7); outline-offset: 3
     border-radius: 13px;
   }
   .story-tip small { margin: 0 0 3px; }
-  .controls { justify-self: center; }
   .tool-buttons {
     width: 100%;
     justify-self: stretch;
@@ -455,4 +443,33 @@ button:focus-visible { outline: 4px solid rgba(240,186,86,.7); outline-offset: 3
   .mission-ribbon { min-height: 48px; padding-top: 5px; padding-bottom: 5px; }
   .maze-stage { height: min(calc(100dvh - 196px), 720px); min-height: 520px; }
   .game-footer { width: 238px; margin: 14px; padding: 10px; }
+}
+
+/* ============ 纯触屏轻量工具栏（v24） ============ */
+@media (min-width: 700px) {
+  .game-footer {
+    width: 220px;
+    margin: 12px;
+    padding: 0;
+    gap: 8px;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    pointer-events: none;
+  }
+  .game-footer .story-tip { display: none; }
+  .game-footer .tool-buttons { pointer-events: none; }
+  .game-footer button { pointer-events: auto; }
+
+  .game-footer .tool-buttons button {
+    color: #244e58;
+    background: rgba(239, 247, 232, .58);
+    border-color: rgba(255, 255, 244, .68);
+    box-shadow: 0 3px 0 rgba(75, 103, 96, .34), 0 7px 18px rgba(0, 20, 30, .16);
+    -webkit-backdrop-filter: blur(8px) saturate(1.16);
+    backdrop-filter: blur(8px) saturate(1.16);
+  }
 }

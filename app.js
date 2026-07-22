@@ -73,10 +73,11 @@
     seed: Date.now() % 2147483647,
     graph: null, current: 0, goal: 0, collectibles: [], found: new Set(),
     trail: [], steps: 0, completed: false, dragging: false, activePointerId: null, hintPath: [],
-    touchPoint: null, touchValid: true, boundaryMissAt: 0,
+    touchPoint: null, touchValid: true, boundaryMissAt: 0, gestureVisited: new Set(),
+    pointerSamples: [], inputFrame: 0, drawFrame: 0, cameraPending: false,
     width: 0, height: 0, dpr: 1, pad: 50, avgEdge: 45, toastTimer: 0,
     world: { width: 0, height: 0, pagesX: 1, pagesY: 1 },
-    camera: { x: 0, y: 0 }, overview: false, blockedPulse: 0, cameraFrame: 0
+    camera: { x: 0, y: 0 }, overview: false, cameraFrame: 0
   };
 
   let audioContext = null, installPrompt = null;
@@ -450,6 +451,8 @@
     state.found = new Set(); state.trail = [state.current]; state.steps = 0;
     state.completed = false; state.dragging = false; state.activePointerId = null;
     state.touchPoint = null; state.touchValid = true; state.hintPath = []; state.overview = false;
+    state.gestureVisited = new Set(); state.pointerSamples = []; state.cameraPending = false;
+    cancelAnimationFrame(state.inputFrame); state.inputFrame = 0;
     $(".story-card").classList.remove("overview-mode");
     $("#overviewButton").setAttribute("aria-pressed", "false");
     localStorage.setItem("starmaze-chapter", state.chapter);
@@ -497,7 +500,9 @@
 
   function resizeCanvas() {
     const rect = stage.getBoundingClientRect();
-    state.width = rect.width; state.height = rect.height; state.dpr = Math.min(devicePixelRatio || 1, 2);
+    const touchDevice = navigator.maxTouchPoints > 0 || matchMedia("(pointer: coarse)").matches;
+    state.width = rect.width; state.height = rect.height;
+    state.dpr = Math.min(devicePixelRatio || 1, touchDevice ? 1.5 : 2);
     canvas.width = Math.round(rect.width * state.dpr); canvas.height = Math.round(rect.height * state.dpr);
     canvas.style.width = `${rect.width}px`; canvas.style.height = `${rect.height}px`;
     ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
@@ -583,7 +588,7 @@
       const t = Math.min(1, (now - began) / duration), eased = 1 - (1 - t) ** 3;
       state.camera.x = start.x + (target.x - start.x) * eased;
       state.camera.y = start.y + (target.y - start.y) * eased;
-      draw();
+      requestDraw();
       if (t < 1) state.cameraFrame = requestAnimationFrame(animate);
     };
     state.cameraFrame = requestAnimationFrame(animate);
@@ -597,6 +602,14 @@
     drawPlayer();
     drawTouchGuide();
     drawMiniMap();
+  }
+
+  function requestDraw() {
+    if (state.drawFrame) return;
+    state.drawFrame = requestAnimationFrame(() => {
+      state.drawFrame = 0;
+      draw();
+    });
   }
 
   function currentSceneImage() { return sceneImages[chapters[state.chapter].theme]; }
@@ -813,7 +826,6 @@
   }
   function drawPlayer() {
     if (state.graph.illustrated) illustratedMarker(state.current,"player"); else token(state.current,"🧒","#dc745d");
-    if(performance.now()-state.blockedPulse<260){const p=screenPoint(state.graph.nodes[state.current]),r=Math.max(20,Math.min(29,state.avgEdge*.32));ctx.save();ctx.strokeStyle="rgba(255,225,146,.58)";ctx.lineWidth=1.5;ctx.setLineDash([2,6]);ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.stroke();ctx.restore();}
   }
 
   function drawTouchGuide() {
@@ -830,12 +842,16 @@
   function followCurrentIfNeeded() {
     if(state.overview)return;
     const p=screenPoint(state.graph.nodes[state.current]);
-    if(p.x<state.width*.27||p.x>state.width*.73||p.y<state.height*.25||p.y>state.height*.75)centerCameraOnCurrent();
+    if(p.x<state.width*.27||p.x>state.width*.73||p.y<state.height*.25||p.y>state.height*.75){
+      if(state.dragging)state.cameraPending=true;
+      else centerCameraOnCurrent();
+    }
   }
 
   function moveTo(next) {
     if(state.completed||!state.graph.adjacency[state.current].includes(next))return false;
     state.current=next;state.trail.push(next);state.steps+=1;state.hintPath=[];$("#dragHint").classList.add("hidden");
+    if(state.dragging)state.gestureVisited.add(next);
     $("#storyTip").innerHTML="<small>正在探索</small><span>小地图里的白框会跟着阿洛移动。</span>";
     playTone(310+(state.steps%5)*32,.045,"sine",.018);
     const collectibleIndex=state.collectibles.indexOf(next);
@@ -848,17 +864,8 @@
       if(state.found.size===state.collectibles.length)completeChapter();
       else{showToast(`${chapters[state.chapter].goalName}还没有醒来……还有 ${state.collectibles.length-state.found.size} 件宝物没有找到。`);playTone(156,.12,"sine",.012);}
     }
-    followCurrentIfNeeded();draw();return true;
+    followCurrentIfNeeded();requestDraw();return true;
   }
-
-  function moveDirection(direction) {
-    const vectors={up:[0,-1],right:[1,0],down:[0,1],left:[-1,0]},v=vectors[direction],current=screenPoint(state.graph.nodes[state.current]);
-    let best={id:-1,score:.15};
-    state.graph.adjacency[state.current].forEach((id)=>{const p=screenPoint(state.graph.nodes[id]),dx=p.x-current.x,dy=p.y-current.y,len=Math.hypot(dx,dy),score=(dx/len)*v[0]+(dy/len)*v[1];if(score>best.score)best={id,score};});
-    if(best.id>=0)moveTo(best.id);else softBlocked();
-  }
-
-  function softBlocked(){state.blockedPulse=performance.now();playTone(142,.035,"sine",.008);$("#storyTip").innerHTML="<small>这边没有路</small><span>换一个方向试试，不着急。</span>";draw();setTimeout(draw,280);}
 
   function pointerPosition(event){const rect=canvas.getBoundingClientRect();return{x:event.clientX-rect.left,y:event.clientY-rect.top};}
 
@@ -869,11 +876,13 @@
     return {progress,distance:Math.hypot(point.x-x,point.y-y)};
   }
 
-  function touchTolerance(){return Math.max(27,Math.min(46,state.avgEdge*.42));}
+  function touchTolerance(){return Math.max(32,Math.min(54,state.avgEdge*.5));}
 
   function nearestReachableRoad(point) {
     const start=screenPoint(state.graph.nodes[state.current]);
-    return state.graph.adjacency[state.current].reduce((best,id)=>{
+    const neighbors=state.graph.adjacency[state.current];
+    const fresh=neighbors.filter((id)=>!state.gestureVisited.has(id));
+    return (fresh.length?fresh:neighbors).reduce((best,id)=>{
       const end=screenPoint(state.graph.nodes[id]),metrics=segmentMetrics(point,start,end);
       return metrics.distance<best.distance?{id,end,...metrics}:best;
     },{id:-1,distance:Infinity,progress:0,end:null});
@@ -889,15 +898,15 @@
         state.boundaryMissAt=performance.now();
         $("#storyTip").innerHTML="<small>走到路边啦</small><span>把手指轻轻移回发光的小路，不会惩罚你。</span>";
       }
-      draw(); return false;
+      requestDraw(); return false;
     }
     const nearNext=road.end&&Math.hypot(point.x-road.end.x,point.y-road.end.y)<Math.max(31,tolerance*.86);
-    if(road.progress>.6||nearNext){
+    if(road.progress>.54||nearNext){
       const moved=moveTo(road.id);
-      if(moved&&hops<3)return moveToward(point,hops+1)||true;
+      if(moved&&hops<6)return moveToward(point,hops+1)||true;
       return moved;
     }
-    draw(); return false;
+    requestDraw(); return false;
   }
 
   function shortestPath(target) {
@@ -910,8 +919,8 @@
     const targets=state.collectibles.filter((id)=>!state.found.has(id));if(!targets.length)targets.push(state.goal);
     const options=targets.map((id)=>shortestPath(id)).filter((path)=>path.length);
     const hintLength=[11,7,4][state.difficulty];options.sort((a,b)=>a.length-b.length);state.hintPath=options[0].slice(0,Math.min(hintLength,options[0].length));
-    showToast(state.found.size<3?"金色微光指向最近的一件宝物。":"所有宝物都找到了，去追随通往出口的光吧。",2200);playTone(660,.18,"sine",.03);draw();
-    setTimeout(()=>{state.hintPath=[];draw();},2400);
+    showToast(state.found.size<3?"金色微光指向最近的一件宝物。":"所有宝物都找到了，去追随通往出口的光吧。",2200);playTone(660,.18,"sine",.03);requestDraw();
+    setTimeout(()=>{state.hintPath=[];requestDraw();},2400);
   }
 
   function showToast(message,duration=3000){const toast=$("#storyToast");toast.textContent=message;toast.classList.add("show");clearTimeout(state.toastTimer);state.toastTimer=setTimeout(()=>toast.classList.remove("show"),duration);}
@@ -1004,29 +1013,48 @@
 
   function openInstallHelp(){updateInstallStatus();$("#installDialog").showModal();}
 
+  function flushPointerSamples() {
+    if (state.inputFrame) cancelAnimationFrame(state.inputFrame);
+    state.inputFrame = 0;
+    const samples = state.pointerSamples.splice(0);
+    samples.forEach((point)=>moveToward(point));
+    requestDraw();
+  }
+
+  function queuePointerSamples(event) {
+    const coalesced=typeof event.getCoalescedEvents==="function"?event.getCoalescedEvents():[];
+    const raw=coalesced.length?coalesced:[event];
+    const stride=Math.max(1,Math.ceil(raw.length/5));
+    for(let index=0;index<raw.length;index+=stride)state.pointerSamples.push(pointerPosition(raw[index]));
+    if(raw.length>1)state.pointerSamples.push(pointerPosition(raw[raw.length-1]));
+    if(state.pointerSamples.length>10)state.pointerSamples=state.pointerSamples.slice(-10);
+    if(!state.inputFrame)state.inputFrame=requestAnimationFrame(flushPointerSamples);
+  }
+
   canvas.addEventListener("pointerdown",(event)=>{
     if(!event.isPrimary||state.activePointerId!==null||state.overview)return;
     event.preventDefault();
     const point=pointerPosition(event),player=screenPoint(state.graph.nodes[state.current]),road=nearestReachableRoad(point);
     const canGrab=Math.hypot(point.x-player.x,point.y-player.y)<=Math.max(52,touchTolerance()*1.35)||road.distance<=touchTolerance();
-    if(!canGrab){state.touchPoint=point;state.touchValid=false;state.dragging=true;draw();setTimeout(()=>{state.dragging=false;state.touchPoint=null;draw();},220);return;}
+    if(!canGrab){state.touchPoint=point;state.touchValid=false;state.dragging=true;requestDraw();setTimeout(()=>{state.dragging=false;state.touchPoint=null;requestDraw();},220);return;}
     state.activePointerId=event.pointerId;state.dragging=true;state.touchPoint=point;state.touchValid=true;
+    state.gestureVisited=new Set([state.current]);state.pointerSamples=[];state.cameraPending=false;
     canvas.setPointerCapture(event.pointerId);moveToward(point);
   });
   canvas.addEventListener("pointermove",(event)=>{
     if(!state.dragging||event.pointerId!==state.activePointerId)return;
     event.preventDefault();
-    const coalesced=typeof event.getCoalescedEvents==="function"?event.getCoalescedEvents():[];
-    const samples=coalesced.length?coalesced:[event];
-    samples.forEach((sample)=>moveToward(pointerPosition(sample)));
+    queuePointerSamples(event);
   });
   function endPointer(event){
     if(event.pointerId!==state.activePointerId)return;
-    state.dragging=false;state.activePointerId=null;state.touchPoint=null;state.touchValid=true;draw();
+    if(event.type==="pointerup")state.pointerSamples.push(pointerPosition(event));
+    flushPointerSamples();
+    state.dragging=false;state.activePointerId=null;state.touchPoint=null;state.touchValid=true;state.gestureVisited=new Set();
+    if(state.cameraPending){state.cameraPending=false;centerCameraOnCurrent();}
+    else requestDraw();
   }
   canvas.addEventListener("pointerup",endPointer);canvas.addEventListener("pointercancel",endPointer);canvas.addEventListener("lostpointercapture",endPointer);
-  document.querySelectorAll(".move-button").forEach((button)=>button.addEventListener("pointerdown",(event)=>{event.preventDefault();moveDirection(button.dataset.dir);}));
-  window.addEventListener("keydown",(event)=>{const keys={ArrowUp:"up",ArrowRight:"right",ArrowDown:"down",ArrowLeft:"left",w:"up",d:"right",s:"down",a:"left"};if(keys[event.key]){event.preventDefault();moveDirection(keys[event.key]);}});
   window.addEventListener("resize",resizeCanvas);
 
   $("#storyButton").addEventListener("click",()=>$("#introDialog").showModal());
@@ -1036,7 +1064,7 @@
   $("#chapterButton").addEventListener("click",()=>{updateChapterList();$("#chapterDialog").showModal();});
   $("#difficultyButton").addEventListener("click",()=>$("#difficultyDialog").showModal());
   $("#installButton").addEventListener("click",openInstallHelp);$("#outsideButton").addEventListener("click",openInstallHelp);
-  $("#overviewButton").addEventListener("click",()=>{state.overview=!state.overview;$(".story-card").classList.toggle("overview-mode",state.overview);$("#overviewButton").setAttribute("aria-pressed",String(state.overview));$("#overviewButton b").textContent=state.overview?"返回":"全图";if(!state.overview)centerCameraOnCurrent(true);updateAverageEdge();showToast(state.overview?"现在看到的是完整世界，再点一次回到阿洛身边。":"回到阿洛身边，继续沿路探险。",1800);draw();});
+  $("#overviewButton").addEventListener("click",()=>{state.overview=!state.overview;$(".story-card").classList.toggle("overview-mode",state.overview);$("#overviewButton").setAttribute("aria-pressed",String(state.overview));$("#overviewButton b").textContent=state.overview?"返回":"全图";if(!state.overview)centerCameraOnCurrent(true);updateAverageEdge();showToast(state.overview?"现在看到的是完整世界，再点一次回到阿洛身边。":"回到阿洛身边，继续沿路探险。",1800);requestDraw();});
   $("#hintButton").addEventListener("click",showHint);$("#newMazeButton").addEventListener("click",()=>startChapter());
   document.querySelectorAll("[data-close]").forEach((button)=>button.addEventListener("click",()=>{stopNarration();const dialog=$(`#${button.dataset.close}`);dialog.close();if(button.dataset.close==="introDialog")localStorage.setItem("starmaze-intro","seen");}));
   $("#soundButton").setAttribute("aria-pressed",String(state.sound));
