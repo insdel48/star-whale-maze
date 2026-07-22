@@ -8,10 +8,10 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="星鲸迷宫" />
     <meta name="description" content="一部可以玩的儿童迷宫冒险绘本" />
-    <link rel="manifest" href="manifest.webmanifest?v=14" />
+    <link rel="manifest" href="manifest.webmanifest?v=17" />
     <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png" />
     <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css?v=14" />
+    <link rel="stylesheet" href="styles.css?v=17" />
     <title>阿洛与星鲸 · 迷宫绘本</title>
   </head>
   <body>
@@ -48,7 +48,7 @@
         </div>
 
         <div class="maze-stage" id="mazeStage">
-          <canvas id="mazeCanvas" aria-label="故事迷宫。沿着小路拖动阿洛，收集物品并到达出口。"></canvas>
+          <canvas id="mazeCanvas" aria-label="故事迷宫。手指按住阿洛，沿发光边界内的小路拖动，收集物品并到达出口。"></canvas>
           <div class="stage-vignette" aria-hidden="true"></div>
           <div class="world-hud">
             <div class="mini-map-wrap">
@@ -57,7 +57,7 @@
             </div>
             <button id="overviewButton" type="button" aria-label="查看完整地图" aria-pressed="false"><span>⌗</span><b>全图</b></button>
           </div>
-          <div class="drag-hint" id="dragHint"><span>☝</span><b>沿着小路拖动阿洛</b></div>
+          <div class="drag-hint" id="dragHint"><span>☝</span><b>按住阿洛，沿发光小路拖动</b></div>
           <div class="story-toast" id="storyToast" role="status"></div>
           <div class="confetti" id="confetti" aria-hidden="true"></div>
         </div>
@@ -94,7 +94,7 @@
         <p class="eyebrow">故事开始了</p>
         <h2>那天晚上，<br />一颗星星落进了雨里</h2>
         <p>阿洛在窗外发现一只迷路的小星鲸。它的五盏星灯散落在奇怪的世界里。只有穿过所有迷宫，才能送它回到天空。</p>
-        <div class="intro-rule"><span>☝</span><b>沿着路拖动阿洛</b></div>
+        <div class="intro-rule"><span>☝</span><b>按住阿洛，沿发光边界内拖动</b></div>
         <div class="intro-rule"><span>✦</span><b>先找齐这一页的宝物</b></div>
         <button class="primary-button" data-close="introDialog">穿上雨衣，出发！</button>
       </article>
@@ -152,6 +152,6 @@
       </article>
     </dialog>
 
-    <script src="app.js?v=14" defer></script>
+    <script src="app.js?v=17" defer></script>
   </body>
 </html>

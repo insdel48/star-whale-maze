@@ -1,6 +1,6 @@
-const CACHE = "star-whale-maze-v14";
+const CACHE = "star-whale-maze-v17";
 const ASSETS = [
-  "./", "./index.html", "./styles.css?v=14", "./app.js?v=14", "./manifest.webmanifest?v=14",
+  "./", "./index.html", "./styles.css?v=17", "./app.js?v=17", "./manifest.webmanifest?v=17",
   "./assets/scenes/forest-maze-v1.png",
   "./assets/scenes/clock-maze-v1.png", "./assets/scenes/dragon-maze-v1.png",
   "./assets/scenes/sea-maze-v1.png", "./assets/scenes/stars-maze-v1.png",

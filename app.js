@@ -72,7 +72,8 @@
     sound: localStorage.getItem("starmaze-sound") !== "off",
     seed: Date.now() % 2147483647,
     graph: null, current: 0, goal: 0, collectibles: [], found: new Set(),
-    trail: [], steps: 0, completed: false, dragging: false, hintPath: [],
+    trail: [], steps: 0, completed: false, dragging: false, activePointerId: null, hintPath: [],
+    touchPoint: null, touchValid: true, boundaryMissAt: 0,
     width: 0, height: 0, dpr: 1, pad: 50, avgEdge: 45, toastTimer: 0,
     world: { width: 0, height: 0, pagesX: 1, pagesY: 1 },
     camera: { x: 0, y: 0 }, overview: false, blockedPulse: 0, cameraFrame: 0
@@ -445,7 +446,8 @@
     const special = state.graph.special || chooseSpecialNodes(state.graph);
     state.current = special.start; state.goal = special.goal; state.collectibles = special.collectibles;
     state.found = new Set(); state.trail = [state.current]; state.steps = 0;
-    state.completed = false; state.dragging = false; state.hintPath = []; state.overview = false;
+    state.completed = false; state.dragging = false; state.activePointerId = null;
+    state.touchPoint = null; state.touchValid = true; state.hintPath = []; state.overview = false;
     $("#overviewButton").setAttribute("aria-pressed", "false");
     localStorage.setItem("starmaze-chapter", state.chapter);
     updateStoryUI();
@@ -590,6 +592,7 @@
     drawTrail();
     drawSpecials();
     drawPlayer();
+    drawTouchGuide();
     drawMiniMap();
   }
 
@@ -704,7 +707,22 @@
   }
 
   function drawMazePaths() {
-    if (state.graph.illustrated && sceneImageReady()) return;
+    if (state.graph.illustrated && sceneImageReady()) {
+      const overviewScale = state.overview ? .48 : 1;
+      const outer = Math.max(14, Math.min(22, state.avgEdge * .26)) * overviewScale;
+      const inner = Math.max(5, outer * .42);
+      ctx.save();
+      ctx.lineCap = "round"; ctx.lineJoin = "round";
+      ctx.strokeStyle = "rgba(5,28,34,.23)"; ctx.lineWidth = outer;
+      state.graph.edges.forEach(([a,b]) => { edgeCurve(state.graph.nodes[a], state.graph.nodes[b]); ctx.stroke(); });
+      ctx.strokeStyle = "rgba(255,247,207,.14)"; ctx.lineWidth = inner;
+      state.graph.edges.forEach(([a,b]) => { edgeCurve(state.graph.nodes[a], state.graph.nodes[b]); ctx.stroke(); });
+      ctx.strokeStyle = "rgba(255,211,101,.62)"; ctx.lineWidth = Math.max(3, inner * .65);
+      ctx.shadowColor = "rgba(255,211,101,.42)"; ctx.shadowBlur = 9;
+      state.graph.adjacency[state.current].forEach((id) => { edgeCurve(state.graph.nodes[state.current], state.graph.nodes[id]); ctx.stroke(); });
+      ctx.restore();
+      return;
+    }
     const theme=chapters[state.chapter].theme;
     const colors={forest:["rgba(20,53,46,.74)","#e8dfbd"],clock:["rgba(74,45,29,.68)","#f3dfaa"],dragon:["rgba(24,43,41,.76)","#d9d5bd"],sea:["rgba(9,58,73,.72)","#d8e1c4"],stars:["rgba(0,7,28,.76)","#bcd8d6"]}[theme];
     const inner=Math.max(7,Math.min(15,state.avgEdge*.23)), outer=inner+7;
@@ -778,6 +796,17 @@
     if(performance.now()-state.blockedPulse<260){const p=screenPoint(state.graph.nodes[state.current]),r=Math.max(20,Math.min(29,state.avgEdge*.32));ctx.save();ctx.strokeStyle="rgba(255,225,146,.58)";ctx.lineWidth=1.5;ctx.setLineDash([2,6]);ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.stroke();ctx.restore();}
   }
 
+  function drawTouchGuide() {
+    if (!state.dragging || !state.touchPoint || state.overview) return;
+    const point = state.touchPoint;
+    ctx.save();
+    ctx.fillStyle = state.touchValid ? "rgba(255,223,130,.16)" : "rgba(255,255,255,.08)";
+    ctx.strokeStyle = state.touchValid ? "rgba(255,235,174,.82)" : "rgba(255,205,162,.56)";
+    ctx.lineWidth = 2; ctx.setLineDash(state.touchValid ? [] : [3,7]);
+    ctx.beginPath(); ctx.arc(point.x, point.y, state.touchValid ? 24 : 19, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+
   function followCurrentIfNeeded() {
     if(state.overview)return;
     const p=screenPoint(state.graph.nodes[state.current]);
@@ -812,10 +841,43 @@
   function softBlocked(){state.blockedPulse=performance.now();playTone(142,.035,"sine",.008);$("#storyTip").innerHTML="<small>这边没有路</small><span>换一个方向试试，不着急。</span>";draw();setTimeout(draw,280);}
 
   function pointerPosition(event){const rect=canvas.getBoundingClientRect();return{x:event.clientX-rect.left,y:event.clientY-rect.top};}
-  function moveToward(point){
-    const neighbors=state.graph.adjacency[state.current];let best={id:-1,distance:Infinity};
-    neighbors.forEach((id)=>{const p=screenPoint(state.graph.nodes[id]),distance=Math.hypot(point.x-p.x,point.y-p.y);if(distance<best.distance)best={id,distance};});
-    if(best.id>=0&&best.distance<Math.max(28,state.avgEdge*.56))moveTo(best.id);
+
+  function segmentMetrics(point, start, end) {
+    const dx=end.x-start.x,dy=end.y-start.y,lengthSquared=dx*dx+dy*dy||1;
+    const progress=Math.max(0,Math.min(1,((point.x-start.x)*dx+(point.y-start.y)*dy)/lengthSquared));
+    const x=start.x+dx*progress,y=start.y+dy*progress;
+    return {progress,distance:Math.hypot(point.x-x,point.y-y)};
+  }
+
+  function touchTolerance(){return Math.max(27,Math.min(46,state.avgEdge*.42));}
+
+  function nearestReachableRoad(point) {
+    const start=screenPoint(state.graph.nodes[state.current]);
+    return state.graph.adjacency[state.current].reduce((best,id)=>{
+      const end=screenPoint(state.graph.nodes[id]),metrics=segmentMetrics(point,start,end);
+      return metrics.distance<best.distance?{id,end,...metrics}:best;
+    },{id:-1,distance:Infinity,progress:0,end:null});
+  }
+
+  function moveToward(point, hops=0){
+    if(state.overview||state.completed)return false;
+    state.touchPoint=point;
+    const road=nearestReachableRoad(point),tolerance=touchTolerance();
+    state.touchValid=road.id>=0&&road.distance<=tolerance;
+    if(!state.touchValid){
+      if(performance.now()-state.boundaryMissAt>500){
+        state.boundaryMissAt=performance.now();
+        $("#storyTip").innerHTML="<small>走到路边啦</small><span>把手指轻轻移回发光的小路，不会惩罚你。</span>";
+      }
+      draw(); return false;
+    }
+    const nearNext=road.end&&Math.hypot(point.x-road.end.x,point.y-road.end.y)<Math.max(31,tolerance*.86);
+    if(road.progress>.6||nearNext){
+      const moved=moveTo(road.id);
+      if(moved&&hops<3)return moveToward(point,hops+1)||true;
+      return moved;
+    }
+    draw(); return false;
   }
 
   function shortestPath(target) {
@@ -857,9 +919,27 @@
 
   function openInstallHelp(){updateInstallStatus();$("#installDialog").showModal();}
 
-  canvas.addEventListener("pointerdown",(event)=>{state.dragging=true;canvas.setPointerCapture(event.pointerId);moveToward(pointerPosition(event));});
-  canvas.addEventListener("pointermove",(event)=>{if(state.dragging)moveToward(pointerPosition(event));});
-  canvas.addEventListener("pointerup",()=>{state.dragging=false;});canvas.addEventListener("pointercancel",()=>{state.dragging=false;});
+  canvas.addEventListener("pointerdown",(event)=>{
+    if(!event.isPrimary||state.activePointerId!==null||state.overview)return;
+    event.preventDefault();
+    const point=pointerPosition(event),player=screenPoint(state.graph.nodes[state.current]),road=nearestReachableRoad(point);
+    const canGrab=Math.hypot(point.x-player.x,point.y-player.y)<=Math.max(52,touchTolerance()*1.35)||road.distance<=touchTolerance();
+    if(!canGrab){state.touchPoint=point;state.touchValid=false;state.dragging=true;draw();setTimeout(()=>{state.dragging=false;state.touchPoint=null;draw();},220);return;}
+    state.activePointerId=event.pointerId;state.dragging=true;state.touchPoint=point;state.touchValid=true;
+    canvas.setPointerCapture(event.pointerId);moveToward(point);
+  });
+  canvas.addEventListener("pointermove",(event)=>{
+    if(!state.dragging||event.pointerId!==state.activePointerId)return;
+    event.preventDefault();
+    const coalesced=typeof event.getCoalescedEvents==="function"?event.getCoalescedEvents():[];
+    const samples=coalesced.length?coalesced:[event];
+    samples.forEach((sample)=>moveToward(pointerPosition(sample)));
+  });
+  function endPointer(event){
+    if(event.pointerId!==state.activePointerId)return;
+    state.dragging=false;state.activePointerId=null;state.touchPoint=null;state.touchValid=true;draw();
+  }
+  canvas.addEventListener("pointerup",endPointer);canvas.addEventListener("pointercancel",endPointer);canvas.addEventListener("lostpointercapture",endPointer);
   document.querySelectorAll(".move-button").forEach((button)=>button.addEventListener("pointerdown",(event)=>{event.preventDefault();moveDirection(button.dataset.dir);}));
   window.addEventListener("keydown",(event)=>{const keys={ArrowUp:"up",ArrowRight:"right",ArrowDown:"down",ArrowLeft:"left",w:"up",d:"right",s:"down",a:"left"};if(keys[event.key]){event.preventDefault();moveDirection(keys[event.key]);}});
   window.addEventListener("resize",resizeCanvas);
