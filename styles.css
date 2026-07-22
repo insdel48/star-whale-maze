@@ -249,3 +249,76 @@ button:focus-visible { outline: 4px solid rgba(240,186,86,.7); outline-offset: 3
 }
 
 @media (prefers-reduced-motion: reduce) { *,*::before,*::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+
+/* ============ Kimi UI polish overrides (v18) ============
+   收藏级立体绘本气质 · iPad 横竖屏 · 安全区 · ≥48px 触控目标 · 温和按压反馈 · 减少面板割裂感 */
+
+/* 安全区：横屏时两侧也留出手势/圆角空间 */
+.book-shell {
+  padding-top: max(10px, env(safe-area-inset-top));
+  padding-left: max(10px, env(safe-area-inset-left));
+  padding-right: max(10px, env(safe-area-inset-right));
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+}
+
+/* 绘本封面感：更圆、更厚、更有层次的投影 */
+.story-card {
+  border-radius: 30px;
+  border-color: rgba(255, 250, 232, .62);
+  box-shadow:
+    0 34px 100px rgba(0, 12, 24, .5),
+    0 6px 22px rgba(0, 18, 30, .28),
+    inset 0 1px 0 rgba(255, 255, 255, .5),
+    inset 0 0 0 1px rgba(255, 255, 255, .22);
+}
+
+/* 减少面板割裂：三条横带用同色系过渡边线，去掉生硬对比 */
+.chapter-strip { border-bottom-color: rgba(211, 197, 170, .65); }
+.mission-ribbon {
+  border-bottom-color: rgba(255, 255, 255, .1);
+  box-shadow: inset 0 -1px 0 rgba(0, 10, 18, .22);
+}
+.game-footer { border-top-color: rgba(212, 197, 169, .6); }
+
+/* 画布融入卡片：内圆角与柔和暗角，像翻开的一页插图 */
+.maze-stage { box-shadow: inset 0 0 0 1px rgba(255, 244, 214, .08); }
+.stage-vignette { box-shadow: inset 0 0 110px rgba(0, 14, 23, .38), inset 0 0 0 1px rgba(255, 255, 255, .1); }
+
+/* 触控目标：无论指针类型，核心交互按钮保底 48px */
+.brand, .round-button, #overviewButton,
+.move-button, .tool-buttons button,
+.difficulty-button, .outside-button,
+.dialog-close, .primary-button, .text-button,
+.chapter-list button, .difficulty-list button { min-height: 48px; }
+.round-button, .brand-moon, .dialog-close { min-width: 48px; }
+
+/* 温和按压反馈：统一短回弹，不跳位置 */
+.round-button, .move-button, .tool-buttons button,
+.difficulty-button, .outside-button, .primary-button,
+.chapter-list button, .difficulty-list button {
+  transition: transform .12s ease, box-shadow .12s ease, background-color .2s ease;
+}
+.tool-buttons button:active, .difficulty-button:active, .outside-button:active,
+.chapter-list button:active, .difficulty-list button:active {
+  transform: scale(.97);
+  box-shadow: 0 2px 8px rgba(16, 43, 50, .18);
+}
+
+/* 立体按钮的纸雕厚度 */
+.tool-buttons button { box-shadow: 0 3px 0 rgba(120, 140, 128, .35), 0 6px 14px rgba(16, 43, 50, .12); }
+.tool-buttons button:active { box-shadow: 0 1px 0 rgba(120, 140, 128, .35); }
+.chapter-list button:active { transform: translateY(2px) scale(.99); }
+
+/* iPad 竖屏：加宽舞台、收紧页脚留白 */
+@media (min-width: 700px) and (max-width: 1100px) and (orientation: portrait) {
+  .book-shell { width: min(96vw, 900px); }
+  .maze-stage { height: min(60vh, 680px); }
+  .game-footer { padding-left: 28px; padding-right: 28px; }
+}
+
+/* iPad 横屏：面板与舞台视觉对齐，减少边缘割裂 */
+@media (orientation: landscape) and (max-height: 900px) {
+  .story-card { border-radius: 26px; }
+  .game-footer { border-left-color: rgba(223, 211, 188, .7); }
+  .maze-stage { min-height: 380px; }
+}

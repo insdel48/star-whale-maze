@@ -713,13 +713,15 @@
       const inner = Math.max(5, outer * .42);
       ctx.save();
       ctx.lineCap = "round"; ctx.lineJoin = "round";
-      ctx.strokeStyle = "rgba(5,28,34,.23)"; ctx.lineWidth = outer;
+      ctx.strokeStyle = "rgba(4,22,29,.27)"; ctx.lineWidth = outer;
       state.graph.edges.forEach(([a,b]) => { edgeCurve(state.graph.nodes[a], state.graph.nodes[b]); ctx.stroke(); });
-      ctx.strokeStyle = "rgba(255,247,207,.14)"; ctx.lineWidth = inner;
+      ctx.strokeStyle = "rgba(255,247,207,.18)"; ctx.lineWidth = inner;
       state.graph.edges.forEach(([a,b]) => { edgeCurve(state.graph.nodes[a], state.graph.nodes[b]); ctx.stroke(); });
       ctx.strokeStyle = "rgba(255,211,101,.62)"; ctx.lineWidth = Math.max(3, inner * .65);
       ctx.shadowColor = "rgba(255,211,101,.42)"; ctx.shadowBlur = 9;
       state.graph.adjacency[state.current].forEach((id) => { edgeCurve(state.graph.nodes[state.current], state.graph.nodes[id]); ctx.stroke(); });
+      ctx.fillStyle = "rgba(255,238,176,.95)"; ctx.shadowColor = "rgba(255,214,110,.85)"; ctx.shadowBlur = 15;
+      state.graph.adjacency[state.current].forEach((id) => { const q = screenPoint(state.graph.nodes[id]); ctx.beginPath(); ctx.arc(q.x, q.y, Math.max(3.5, inner * .5), 0, Math.PI * 2); ctx.fill(); });
       ctx.restore();
       return;
     }
