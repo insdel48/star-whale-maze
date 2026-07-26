@@ -8,49 +8,67 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="星鲸迷宫" />
     <meta name="description" content="一部可以玩的儿童迷宫冒险绘本" />
-    <link rel="manifest" href="manifest.webmanifest?v=26" />
+    <link rel="manifest" href="manifest.webmanifest?v=29" />
     <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png" />
     <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css?v=26" />
-    <title>阿洛与星鲸 · 迷宫绘本</title>
+    <link rel="stylesheet" href="styles.css?v=29" />
+    <title>阿洛的故事书架 · 迷宫绘本</title>
   </head>
   <body>
     <div class="paper-grain" aria-hidden="true"></div>
 
-    <main class="book-shell">
-      <header class="book-header">
-        <button class="brand" id="storyButton" type="button" aria-label="打开故事开头">
-          <span class="brand-moon">☾</span>
-          <span><small>一本可以玩的冒险绘本</small><strong>阿洛与星鲸</strong></span>
-        </button>
-        <div class="header-actions">
-          <button class="round-button narration-button header-read-button" id="readButton" type="button" aria-label="朗读这一页" aria-pressed="false" data-read-label="朗读"><span aria-hidden="true">🔊</span><b class="read-label">朗读</b></button>
-          <button class="round-button" id="soundButton" type="button" aria-label="关闭声音" aria-pressed="true"><span class="on">♪</span><span class="off">×</span></button>
-          <button class="round-button" id="installButton" type="button" aria-label="带到外面玩">⌂</button>
-          <button class="round-button" id="chapterButton" type="button" aria-label="选择故事章节">☷</button>
-        </div>
-      </header>
-
-      <section class="story-card" aria-label="迷宫故事游戏">
-        <header class="chapter-strip">
-          <div class="chapter-number"><small>CHAPTER</small><strong id="chapterNumber">01</strong></div>
-          <div class="chapter-copy">
-            <p id="chapterKicker">星鲸坠落以后</p>
-            <h1 id="chapterTitle">雨落下来的晚上</h1>
-            <p id="chapterStory">一颗蓝色的星星掉进森林。阿洛披上雨衣，跟着微弱的歌声出发了。</p>
+    <section class="bookshelf-screen" id="bookshelf" aria-label="阿洛的故事书架" hidden>
+      <div class="bookshelf-glow" aria-hidden="true"></div>
+      <div class="bookshelf-inner">
+        <header class="bookshelf-header">
+          <div class="bookshelf-mark" aria-hidden="true">☾</div>
+          <div>
+            <p>阿洛的绘本书架</p>
+            <h1>今晚，想走进哪一个故事？</h1>
+            <span>点开一本发光的绘本。读完以后，它会得到一枚金色印章。</span>
           </div>
-          <div class="chapter-progress" id="chapterProgress" aria-label="章节进度"></div>
         </header>
+        <div class="bookshelf-grid" id="bookshelfGrid"></div>
+        <footer class="bookshelf-footer"><span>✦</span> 更多故事正在装订中 · 已下载的故事可以离线玩</footer>
+      </div>
+    </section>
 
-        <div class="mission-ribbon">
-          <div class="mission-icon" id="missionIcon">✨</div>
-          <div><small>这一页的任务</small><strong id="missionText">找到 3 盏萤火灯，再去森林门</strong></div>
-          <div class="collection" id="collection" aria-label="已收集物品"></div>
-        </div>
+    <main class="book-shell" id="gameBook">
+      <section class="story-card" aria-label="迷宫故事游戏">
+        <header class="book-toolbar">
+          <button class="brand" id="storyButton" type="button" aria-label="返回故事书架">
+            <span class="brand-moon">☾</span>
+            <span class="brand-copy"><small>点这里返回故事书架</small><strong id="brandTitle">阿洛与星鲸</strong></span>
+          </button>
+
+          <div class="chapter-block">
+            <div class="chapter-number"><small>CHAPTER</small><strong id="chapterNumber">01</strong></div>
+            <div class="chapter-copy">
+              <p id="chapterKicker">星鲸坠落以后</p>
+              <h1 id="chapterTitle">雨落下来的晚上</h1>
+              <p id="chapterStory">一颗蓝色的星星掉进森林。阿洛披上雨衣，跟着微弱的歌声出发了。</p>
+            </div>
+            <div class="chapter-progress" id="chapterProgress" aria-label="章节进度"></div>
+          </div>
+
+          <div class="mission-block">
+            <div class="mission-icon" id="missionIcon">✨</div>
+            <div class="mission-copy"><small>这一页的任务</small><strong id="missionText">找到 3 盏萤火灯，再去森林门</strong></div>
+            <div class="collection" id="collection" aria-label="已收集物品"></div>
+          </div>
+
+          <nav class="header-actions" aria-label="绘本工具">
+            <button class="difficulty-button" id="difficultyButton" type="button" aria-label="选择难度"><span id="difficultyGlyph">◆◆</span><b id="difficultyLabel">勇敢冒险家</b></button>
+            <button class="round-button" id="chapterButton" type="button" aria-label="选择故事章节">☷</button>
+            <button class="round-button" id="soundButton" type="button" aria-label="关闭声音" aria-pressed="true"><span class="on">♪</span><span class="off">×</span></button>
+            <button class="round-button" id="installButton" type="button" aria-label="带到外面玩">⌂</button>
+          </nav>
+        </header>
 
         <div class="maze-stage" id="mazeStage">
           <canvas id="mazeCanvas" aria-label="故事迷宫。按住阿洛沿发光小路拖动可以行走；按住地图其他位置拖动可以自由查看前后区域。"></canvas>
           <div class="stage-vignette" aria-hidden="true"></div>
+          <button class="round-button narration-button stage-read-button" id="readButton" type="button" aria-label="朗读这一页" aria-pressed="false" data-read-label="朗读"><span aria-hidden="true">🔊</span><b class="read-label">朗读</b></button>
           <div class="world-hud">
             <div class="mini-map-wrap">
               <canvas id="miniMap" width="144" height="78" aria-label="迷宫小地图"></canvas>
@@ -72,12 +90,6 @@
           </div>
         </footer>
       </section>
-
-      <footer class="book-footer">
-        <button class="difficulty-button" id="difficultyButton" type="button"><span id="difficultyGlyph">◆◆</span><b id="difficultyLabel">勇敢冒险家</b></button>
-        <button class="outside-button" id="outsideButton" type="button">⌂ 带到外面玩</button>
-        <p>原创故事 · 多屏大地图 · 安装后离线玩</p>
-      </footer>
     </main>
 
     <dialog class="dialog" id="introDialog">
@@ -85,13 +97,13 @@
         <button class="dialog-close" data-close="introDialog" aria-label="关闭">×</button>
         <div class="intro-sky" aria-hidden="true"><i></i><i></i><i></i><span>🐋</span></div>
         <p class="eyebrow">故事开始了</p>
-        <h2>那天晚上，<br />一颗星星落进了雨里</h2>
-        <p>阿洛在窗外发现一只迷路的小星鲸。它的五盏星灯散落在奇怪的世界里。只有穿过所有迷宫，才能送它回到天空。</p>
+        <h2 id="introTitle">那天晚上，<br />一颗星星落进了雨里</h2>
+        <p id="introStory">阿洛在窗外发现一只迷路的小星鲸。它的五盏星灯散落在奇怪的世界里。只有穿过所有迷宫，才能送它回到天空。</p>
         <button class="story-read-button narration-button" id="introReadButton" type="button" aria-label="朗读故事开头" aria-pressed="false" data-read-label="听故事"><span aria-hidden="true">🔊</span><b class="read-label">听故事</b></button>
         <div class="intro-rule"><span>☝</span><b>按住阿洛，沿发光边界内拖动</b></div>
         <div class="intro-rule"><span>🖐</span><b>拖动地图其他位置，随时查看前后的路</b></div>
         <div class="intro-rule"><span>✦</span><b>先找齐这一页的宝物</b></div>
-        <button class="primary-button" data-close="introDialog">穿上雨衣，出发！</button>
+        <button class="primary-button" id="introStartButton" data-close="introDialog">穿上雨衣，出发！</button>
       </article>
     </dialog>
 
@@ -148,6 +160,6 @@
       </article>
     </dialog>
 
-    <script src="app.js?v=26" defer></script>
+    <script src="app.js?v=29" defer></script>
   </body>
 </html>

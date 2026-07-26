@@ -9,7 +9,7 @@
   const stage = $("#mazeStage");
   const sceneImageFiles = {
     forest: "forest-maze-v1.png", clock: "clock-maze-v1.png", dragon: "dragon-maze-v1.png",
-    sea: "sea-maze-v1.png", stars: "stars-maze-v1.png"
+    sea: "sea-maze-v1.png", stars: "stars-maze-v1.png", cloudtrain: "cloud-train-maze-v1.png"
   };
   const sceneImages = Object.fromEntries(Object.entries(sceneImageFiles).map(([theme, file]) => {
     const image = new Image();
@@ -54,8 +54,60 @@
       story: "这里没有上和下，只有一条条发光的星路。阿洛听见老朋友在花园尽头歌唱。",
       finds: ["第一颗星种子开出一朵蓝色小花。", "第二颗星种子照亮了走过的所有远路。", "最后一颗星种子说：真正的勇敢，是愿意送朋友回家。"],
       winKicker: "五盏星灯全部亮了", winTitle: "星鲸终于游回天空", winStory: "它绕着阿洛游了三圈，留下一个会发光的约定：迷路的时候，抬头就能再见。", theme: "stars", goalName: "星鲸"
+    },
+    {
+      title: "云朵列车的最后一站", kicker: "最后一班送雨列车", icon: "🚂", item: "🎫", goal: "🌈",
+      mission: "找到 3 张云朵车票，把朵朵送到彩虹站",
+      story: "一朵叫朵朵的小云错过了最后一班送雨列车。远方的花谷等着下雨，阿洛答应陪它穿过整张大地图。",
+      finds: [
+        "第一张车票从雾里亮起来，告诉他们：真正的站台藏在向日葵转身的方向。",
+        "第二张车票落在断桥边。朵朵鼓起勇气下了一场小雨，一道彩虹变成了新桥。",
+        "雪洞冻住了最后一张车票。阿洛把提灯贴近冰面，温暖让列车重新响起汽笛。"
+      ],
+      winKicker: "花谷终于等到了雨", winTitle: "朵朵搭上了回家的列车", winStory: "列车驶进彩虹站，朵朵化成一场温柔的雨。花朵抬起头，阿洛收到一张写着“下次见”的云朵车票。", theme: "cloudtrain", goalName: "彩虹站"
     }
   ];
+
+  chapters.forEach((chapter, index) => {
+    chapter.storyId = index < 5 ? "starwhale" : "cloudtrain";
+    chapter.storyChapter = index < 5 ? index : 0;
+  });
+
+  const stories = [
+    {
+      id: "starwhale", title: "阿洛与星鲸", subtitle: "五盏星灯的远行", cover: sceneImageFiles.forest,
+      chapterIndices: [0, 1, 2, 3, 4], badge: "第一部 · 5 个迷宫",
+      introTitle: "那天晚上，<br />一颗星星落进了雨里",
+      introStory: "阿洛在窗外发现一只迷路的小星鲸。它的五盏星灯散落在奇怪的世界里。只有穿过所有迷宫，才能送它回到天空。",
+      introButton: "穿上雨衣，出发！", introIcon: "🐋"
+    },
+    {
+      id: "cloudtrain", title: "阿洛与云朵列车", subtitle: "云朵列车的最后一站", cover: sceneImageFiles.cloudtrain,
+      chapterIndices: [5], badge: "第二部 · 1 张完整大迷宫",
+      introTitle: "最后一班送雨列车，<br />已经开走了",
+      introStory: "一朵叫朵朵的小云错过了最后一班送雨列车。远方的花谷正等着下雨，阿洛答应陪它穿过雾站、花田和雪洞，一直走到彩虹站。",
+      introButton: "陪朵朵去车站！", introIcon: "☁️"
+    }
+  ];
+
+  const storyById = (storyId) => stories.find((story) => story.id === storyId) || stories[0];
+  const storyPosition = (chapterIndex) => storyById(chapters[chapterIndex].storyId).chapterIndices.indexOf(chapterIndex);
+  const progressKey = (storyId) => `starmaze-progress-${storyId}`;
+  function readStoryProgress(storyId) {
+    try {
+      const saved = JSON.parse(localStorage.getItem(progressKey(storyId)) || "null");
+      if (saved) return { started: Boolean(saved.started), current: Number(saved.current) || 0, unlocked: Number(saved.unlocked) || 0, completed: Boolean(saved.completed), bestSteps: Number(saved.bestSteps) || 0 };
+    } catch (_) { /* Ignore damaged progress and rebuild it below. */ }
+    if (storyId === "starwhale") {
+      const legacyUnlocked = Math.min(Number(localStorage.getItem("starmaze-unlocked")) || 0, 4);
+      const legacyChapter = Math.min(Number(localStorage.getItem("starmaze-chapter")) || 0, 4);
+      return { started: Boolean(localStorage.getItem("starmaze-intro")) || legacyUnlocked > 0 || legacyChapter > 0, current: legacyChapter, unlocked: legacyUnlocked, completed: legacyUnlocked >= 4, bestSteps: 0 };
+    }
+    return { started: false, current: 0, unlocked: 0, completed: false, bestSteps: 0 };
+  }
+  function writeStoryProgress(storyId, progress) {
+    localStorage.setItem(progressKey(storyId), JSON.stringify(progress));
+  }
 
   const difficulty = [
     { label: "故事探索者", glyph: "◇", factor: 0 },
@@ -64,10 +116,16 @@
   ];
 
   const previewChapter = Number(new URLSearchParams(location.search).get("chapter"));
-  const savedChapter = Math.min(Number(localStorage.getItem("starmaze-chapter")) || 0, chapters.length - 1);
+  const savedStoryId = stories.some((story) => story.id === localStorage.getItem("starmaze-current-story")) ? localStorage.getItem("starmaze-current-story") : "starwhale";
+  const savedProgress = readStoryProgress(savedStoryId);
+  const savedStory = storyById(savedStoryId);
+  const savedChapter = savedStory.chapterIndices[Math.min(savedProgress.current, savedStory.chapterIndices.length - 1)];
+  const initialChapter = Number.isInteger(previewChapter) && previewChapter >= 1 && previewChapter <= chapters.length ? previewChapter - 1 : savedChapter;
+  const initialProgress = readStoryProgress(chapters[initialChapter].storyId);
   const state = {
-    chapter: Number.isInteger(previewChapter) && previewChapter >= 1 && previewChapter <= chapters.length ? previewChapter - 1 : savedChapter,
-    unlocked: Math.min(Number(localStorage.getItem("starmaze-unlocked")) || 0, chapters.length - 1),
+    storyId: chapters[initialChapter].storyId,
+    chapter: initialChapter,
+    unlocked: initialProgress.unlocked,
     difficulty: Number(localStorage.getItem("starmaze-difficulty") ?? 1),
     sound: localStorage.getItem("starmaze-sound") !== "off",
     seed: Date.now() % 2147483647,
@@ -367,6 +425,17 @@
     return buildIllustratedGraph(points, paths, { start:"start", goal:"goal", collectibles:["star1","star2","star3"] });
   }
 
+  function illustratedCloudTrainGraph() {
+    const graph = illustratedForestGraph();
+    const ids = Object.fromEntries(graph.nodes.map((node) => [node.key, node.id]));
+    graph.special = {
+      start: ids.start,
+      goal: ids.goal,
+      collectibles: [ids.top8, ids.bridge1, ids.lamp3]
+    };
+    return graph;
+  }
+
   function carveMaze(base, rng) {
     const candidates = Array.from({ length: base.nodes.length }, () => []);
     base.edges.forEach(([a,b]) => { candidates[a].push(b); candidates[b].push(a); });
@@ -434,11 +503,13 @@
   function startChapter(chapterIndex = state.chapter) {
     stopNarration();
     state.chapter = chapterIndex;
+    state.storyId = chapters[chapterIndex].storyId;
+    state.unlocked = readStoryProgress(state.storyId).unlocked;
     state.seed = (state.seed + 104729) % 2147483647;
     const rng = mulberry32(state.seed + chapterIndex * 99991 + state.difficulty * 7127);
     const illustratedFactories = {
       forest: illustratedForestGraph, clock: illustratedClockGraph, dragon: illustratedDragonGraph,
-      sea: illustratedSeaGraph, stars: illustratedStarsGraph
+      sea: illustratedSeaGraph, stars: illustratedStarsGraph, cloudtrain: illustratedCloudTrainGraph
     };
     const factory = illustratedFactories[chapters[chapterIndex].theme];
     if (factory) state.graph = factory();
@@ -459,7 +530,11 @@
     canvas.classList.remove("is-panning");
     $(".story-card").classList.remove("overview-mode");
     $("#overviewButton").setAttribute("aria-pressed", "false");
-    localStorage.setItem("starmaze-chapter", state.chapter);
+    const progress = readStoryProgress(state.storyId);
+    progress.current = storyPosition(state.chapter);
+    writeStoryProgress(state.storyId, progress);
+    localStorage.setItem("starmaze-current-story", state.storyId);
+    if (state.storyId === "starwhale") localStorage.setItem("starmaze-chapter", state.chapter);
     updateStoryUI();
     requestAnimationFrame(resizeCanvas);
   }
@@ -468,12 +543,13 @@
     const chapter = chapters[state.chapter];
     const palette = {
       forest:["#174f54","#102f3e"], clock:["#82632f","#253e51"], dragon:["#3f7468","#274854"],
-      sea:["#227b94","#153f63"], stars:["#4859a0","#202b66"]
+      sea:["#227b94","#153f63"], stars:["#4859a0","#202b66"], cloudtrain:["#8a6932","#203e66"]
     }[chapter.theme];
     document.documentElement.style.setProperty("--chapter-accent", palette[0]);
     document.documentElement.style.setProperty("--chapter-deep", palette[1]);
     document.body.dataset.theme = chapter.theme;
-    $("#chapterNumber").textContent = String(state.chapter + 1).padStart(2, "0");
+    $("#brandTitle").textContent = storyById(state.storyId).title;
+    $("#chapterNumber").textContent = String(storyPosition(state.chapter) + 1).padStart(2, "0");
     $("#chapterKicker").textContent = chapter.kicker;
     $("#chapterTitle").textContent = chapter.title;
     $("#chapterStory").textContent = chapter.story;
@@ -481,7 +557,9 @@
     $("#missionText").textContent = chapter.mission;
     $("#storyTip").innerHTML = "<small>阿洛说</small><span>有些路看起来很近，却不一定能到达。</span>";
     $("#dragHint").classList.remove("hidden");
-    $("#chapterProgress").innerHTML = chapters.map((_, i) => `<i class="${i < state.chapter ? "done" : i === state.chapter ? "current" : ""}"></i>`).join("");
+    const story = storyById(state.storyId);
+    const position = storyPosition(state.chapter);
+    $("#chapterProgress").innerHTML = story.chapterIndices.map((_, i) => `<i class="${i < position ? "done" : i === position ? "current" : ""}"></i>`).join("");
     updateCollectionUI(); updateChapterList();
   }
 
@@ -491,10 +569,13 @@
   }
 
   function updateChapterList() {
-    $("#chapterList").innerHTML = chapters.map((chapter, index) => {
-      const locked = index > state.unlocked;
+    const story = storyById(state.storyId);
+    const progress = readStoryProgress(state.storyId);
+    $("#chapterList").innerHTML = story.chapterIndices.map((index, position) => {
+      const chapter = chapters[index];
+      const locked = position > progress.unlocked;
       return `<button data-chapter="${index}" style="--chapter-art:url('./assets/scenes/${sceneImageFiles[chapter.theme]}')" class="${index === state.chapter ? "current" : ""} ${locked ? "locked" : ""}" ${locked ? "disabled" : ""}>
-        <span class="chapter-emoji">${chapter.icon}</span><small>CHAPTER ${String(index + 1).padStart(2,"0")}</small><b>${chapter.title}</b><em>${locked ? "🔒" : index < state.unlocked ? "✓" : ""}</em>
+        <span class="chapter-emoji">${chapter.icon}</span><small>CHAPTER ${String(position + 1).padStart(2,"0")}</small><b>${chapter.title}</b><em>${locked ? "🔒" : position < progress.unlocked || progress.completed ? "✓" : ""}</em>
       </button>`;
     }).join("");
     $("#chapterList").querySelectorAll("button:not([disabled])").forEach((button) => button.addEventListener("click", () => {
@@ -502,7 +583,60 @@
     }));
   }
 
+  function updateIntroUI() {
+    const story = storyById(state.storyId);
+    $("#introTitle").innerHTML = story.introTitle;
+    $("#introStory").textContent = story.introStory;
+    $("#introStartButton").textContent = story.introButton;
+    $("#introDialog .intro-sky span").textContent = story.introIcon;
+  }
+
+  function renderBookshelf() {
+    const playable = stories.map((story, index) => {
+      const progress = readStoryProgress(story.id);
+      const total = story.chapterIndices.length;
+      const finished = progress.completed ? total : Math.min(progress.unlocked, total - 1);
+      const status = progress.completed ? "已完成" : progress.started ? "进行中" : "未开始";
+      const action = progress.completed ? "再玩一次" : progress.started ? "继续故事" : "开始故事";
+      const best = progress.completed && progress.bestSteps ? `<small class="book-best">最好成绩 · ${progress.bestSteps} 步</small>` : "";
+      return `<article class="story-book ${progress.completed ? "is-complete" : ""}" style="--book-cover:url('./assets/scenes/${story.cover}')">
+        <div class="story-book-cover"><span class="book-number">STORY ${String(index + 1).padStart(2,"0")}</span>${progress.completed ? '<span class="completion-seal">✓<b>已完成</b></span>' : ""}</div>
+        <div class="story-book-copy"><small>${story.badge}</small><h2>${story.title}</h2><p>${story.subtitle}</p><div class="book-progress"><span><i style="--progress:${progress.completed ? 100 : Math.round(finished / total * 100)}%"></i></span><b>${status} · ${progress.completed ? total : finished}/${total}</b></div>${best}<button type="button" data-story="${story.id}">${action}<span>→</span></button></div>
+      </article>`;
+    }).join("");
+    const future = [3, 4, 5, 6].map((number) => `<article class="story-book future-book" aria-disabled="true"><div class="future-cover"><span>STORY ${String(number).padStart(2,"0")}</span><b>${["✦","☁","⌁","☾"][number - 3]}</b></div><div class="story-book-copy"><small>新的冒险</small><h2>第 ${number} 部故事</h2><p>绘本工坊正在装订这一页……</p><button type="button" disabled>即将到来</button></div></article>`).join("");
+    $("#bookshelfGrid").innerHTML = playable + future;
+    $("#bookshelfGrid").querySelectorAll("[data-story]").forEach((button) => button.addEventListener("click", () => openStory(button.dataset.story)));
+  }
+
+  function showBookshelf() {
+    stopNarration();
+    document.querySelectorAll("dialog[open]").forEach((dialog) => dialog.close());
+    renderBookshelf();
+    $("#gameBook").hidden = true;
+    $("#bookshelf").hidden = false;
+    document.body.classList.add("showing-bookshelf");
+  }
+
+  function openStory(storyId) {
+    const story = storyById(storyId);
+    const progress = readStoryProgress(story.id);
+    const wasStarted = progress.started;
+    progress.started = true;
+    if (progress.completed) progress.current = 0;
+    writeStoryProgress(story.id, progress);
+    state.storyId = story.id;
+    state.unlocked = progress.unlocked;
+    $("#bookshelf").hidden = true;
+    $("#gameBook").hidden = false;
+    document.body.classList.remove("showing-bookshelf");
+    updateIntroUI();
+    startChapter(story.chapterIndices[Math.min(progress.current, story.chapterIndices.length - 1)]);
+    if (!wasStarted || !localStorage.getItem(`starmaze-intro-${story.id}`)) setTimeout(() => $("#introDialog").showModal(), 420);
+  }
+
   function resizeCanvas() {
+    if (!state.graph || $("#gameBook").hidden) return;
     const rect = stage.getBoundingClientRect();
     const touchDevice = navigator.maxTouchPoints > 0 || matchMedia("(pointer: coarse)").matches;
     state.width = rect.width; state.height = rect.height;
@@ -671,7 +805,7 @@
     const theme = chapters[state.chapter].theme;
     const gradients = {
       forest: ["#9ab9a0", "#416f69"], clock: ["#dfc68d", "#8f6d4f"], dragon: ["#9aa8a2", "#475b58"],
-      sea: ["#72b7bc", "#2c7084"], stars: ["#1f4168", "#091d38"]
+      sea: ["#72b7bc", "#2c7084"], stars: ["#1f4168", "#091d38"], cloudtrain: ["#6fa4b5", "#213c68"]
     };
     const gradient = ctx.createLinearGradient(0, 0, state.width, state.height);
     gradient.addColorStop(0, gradients[theme][0]); gradient.addColorStop(1, gradients[theme][1]);
@@ -999,11 +1133,12 @@
     const chapter = chapters[state.chapter];
     const tip = $("#storyTip span")?.textContent || "";
     const found = state.found.size ? `已经找到 ${state.found.size} 件宝物。` : "宝物还在迷宫里等你。";
-    return `第 ${state.chapter + 1} 章，${chapter.title}。${chapter.story}。这一页的任务：${chapter.mission}。${found}${tip}。玩法提示：按住阿洛，沿着发光小路慢慢拖动。按住地图其他位置拖动，可以随时查看走过的路和前面的区域。`;
+    return `第 ${storyPosition(state.chapter) + 1} 章，${chapter.title}。${chapter.story}。这一页的任务：${chapter.mission}。${found}${tip}。玩法提示：按住阿洛，沿着发光小路慢慢拖动。按住地图其他位置拖动，可以随时查看走过的路和前面的区域。`;
   }
 
   function introNarration() {
-    return "故事开始了。那天晚上，一颗星星落进了雨里。阿洛在窗外发现一只迷路的小星鲸。它的五盏星灯散落在奇怪的世界里。只有穿过所有迷宫，才能送它回到天空。按住阿洛，沿发光边界内拖动。拖动地图其他位置，可以随时查看前后的路。先找齐这一页的宝物。";
+    const story = storyById(state.storyId);
+    return `故事开始了。${story.introTitle.replace(/<br\s*\/?>/gi, "")}。${story.introStory}。按住阿洛，沿发光边界内拖动。拖动地图其他位置，可以随时查看前后的路。先找齐这一页的宝物。`;
   }
 
   function winNarration() {
@@ -1012,9 +1147,15 @@
 
   function completeChapter(){
     stopNarration();
-    state.completed=true;const chapter=chapters[state.chapter];state.unlocked=Math.max(state.unlocked,Math.min(state.chapter+1,chapters.length-1));localStorage.setItem("starmaze-unlocked",state.unlocked);
+    state.completed=true;const chapter=chapters[state.chapter],story=storyById(state.storyId),position=storyPosition(state.chapter),progress=readStoryProgress(state.storyId),isLast=position===story.chapterIndices.length-1;
+    progress.started=true;
+    if(isLast){progress.completed=true;progress.current=0;progress.unlocked=story.chapterIndices.length-1;progress.bestSteps=progress.bestSteps?Math.min(progress.bestSteps,state.steps):state.steps;}
+    else{progress.unlocked=Math.max(progress.unlocked,position+1);progress.current=position+1;}
+    writeStoryProgress(state.storyId,progress);state.unlocked=progress.unlocked;
+    if(state.storyId==="starwhale")localStorage.setItem("starmaze-unlocked",state.unlocked);
     $("#winScene").textContent="";$("#winScene").style.backgroundImage=`url('./assets/scenes/${sceneImageFiles[chapter.theme]}')`;$("#winKicker").textContent=chapter.winKicker;$("#winTitle").textContent=chapter.winTitle;$("#winStory").textContent=chapter.winStory;$("#winSteps").textContent=state.steps;$("#winTreasures").textContent=state.found.size;
-    $("#nextChapterButton").innerHTML=state.chapter<chapters.length-1?'翻到下一页 <span>→</span>':'从故事开头再读一遍 <span>↻</span>';
+    $("#nextChapterButton").dataset.action=isLast?"shelf":"next";
+    $("#nextChapterButton").innerHTML=isLast?'回到故事书架 <span>→</span>':'翻到下一页 <span>→</span>';
     launchConfetti();playWinSound();setTimeout(()=>$("#winDialog").showModal(),650);
   }
 
@@ -1092,16 +1233,17 @@
   canvas.addEventListener("pointerup",endPointer);canvas.addEventListener("pointercancel",endPointer);canvas.addEventListener("lostpointercapture",endPointer);
   window.addEventListener("resize",resizeCanvas);
 
-  $("#storyButton").addEventListener("click",()=>$("#introDialog").showModal());
+  $("#storyButton").addEventListener("click",showBookshelf);
   $("#readButton").addEventListener("click",()=>speakText(currentPageNarration()));
   $("#introReadButton").addEventListener("click",()=>speakText(introNarration()));
   $("#winReadButton").addEventListener("click",()=>speakText(winNarration()));
   $("#chapterButton").addEventListener("click",()=>{updateChapterList();$("#chapterDialog").showModal();});
   $("#difficultyButton").addEventListener("click",()=>$("#difficultyDialog").showModal());
-  $("#installButton").addEventListener("click",openInstallHelp);$("#outsideButton").addEventListener("click",openInstallHelp);
+  $("#installButton").addEventListener("click",openInstallHelp);
+  const outsideButton=$("#outsideButton");if(outsideButton)outsideButton.addEventListener("click",openInstallHelp);
   $("#overviewButton").addEventListener("click",()=>{state.overview=!state.overview;$(".story-card").classList.toggle("overview-mode",state.overview);$("#overviewButton").setAttribute("aria-pressed",String(state.overview));$("#overviewButton b").textContent=state.overview?"返回":"全图";if(!state.overview){state.panMoved=false;centerCameraOnCurrent(true);}updateAverageEdge();showToast(state.overview?"现在看到的是完整世界，再点一次回到阿洛身边。":"回到阿洛身边，继续沿路探险。",1800);requestDraw();});
   $("#hintButton").addEventListener("click",showHint);$("#newMazeButton").addEventListener("click",()=>startChapter());
-  document.querySelectorAll("[data-close]").forEach((button)=>button.addEventListener("click",()=>{stopNarration();const dialog=$(`#${button.dataset.close}`);dialog.close();if(button.dataset.close==="introDialog")localStorage.setItem("starmaze-intro","seen");}));
+  document.querySelectorAll("[data-close]").forEach((button)=>button.addEventListener("click",()=>{stopNarration();const dialog=$(`#${button.dataset.close}`);dialog.close();if(button.dataset.close==="introDialog"){localStorage.setItem(`starmaze-intro-${state.storyId}`,"seen");if(state.storyId==="starwhale")localStorage.setItem("starmaze-intro","seen");}}));
   $("#soundButton").setAttribute("aria-pressed",String(state.sound));
   $("#soundButton").addEventListener("click",()=>{state.sound=!state.sound;localStorage.setItem("starmaze-sound",state.sound?"on":"off");$("#soundButton").setAttribute("aria-pressed",String(state.sound));$("#soundButton").setAttribute("aria-label",state.sound?"关闭声音":"打开声音");if(state.sound)playTone(660,.12,"sine",.04);});
   document.querySelectorAll("#difficultyList button").forEach((button)=>{
@@ -1109,7 +1251,7 @@
     button.addEventListener("click",()=>{state.difficulty=Number(button.dataset.level);localStorage.setItem("starmaze-difficulty",state.difficulty);document.querySelectorAll("#difficultyList button").forEach((item)=>item.classList.toggle("selected",item===button));$("#difficultyLabel").textContent=difficulty[state.difficulty].label;$("#difficultyGlyph").textContent=difficulty[state.difficulty].glyph;$("#difficultyDialog").close();startChapter();});
   });
   $("#difficultyLabel").textContent=difficulty[state.difficulty].label;$("#difficultyGlyph").textContent=difficulty[state.difficulty].glyph;
-  $("#nextChapterButton").addEventListener("click",()=>{$("#winDialog").close();startChapter(state.chapter<chapters.length-1?state.chapter+1:0);});
+  $("#nextChapterButton").addEventListener("click",()=>{const action=$("#nextChapterButton").dataset.action;$("#winDialog").close();if(action==="shelf")showBookshelf();else{const story=storyById(state.storyId),next=story.chapterIndices[storyPosition(state.chapter)+1];startChapter(next);}});
   $("#replayButton").addEventListener("click",()=>{$("#winDialog").close();startChapter();});
 
   window.addEventListener("beforeinstallprompt",(event)=>{event.preventDefault();installPrompt=event;updateInstallStatus();});
@@ -1118,6 +1260,6 @@
   if("speechSynthesis" in window){findChineseVoice();window.speechSynthesis.addEventListener?.("voiceschanged",findChineseVoice);}
   window.addEventListener("pagehide",stopNarration);
   if("serviceWorker" in navigator&&location.protocol!=="file:")window.addEventListener("load",async()=>{try{const registration=await navigator.serviceWorker.register("./sw.js");registration.update().catch(()=>{});}catch(_){/* The installed game may start while offline. */}});
-  startChapter();
-  if(!localStorage.getItem("starmaze-intro"))setTimeout(()=>$("#introDialog").showModal(),550);
+  renderBookshelf();
+  showBookshelf();
 })();

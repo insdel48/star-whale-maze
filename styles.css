@@ -474,3 +474,210 @@ button:focus-visible { outline: 4px solid rgba(240,186,86,.7); outline-offset: 3
     backdrop-filter: blur(8px) saturate(1.16);
   }
 }
+
+/* ============ v27 平板紧凑单栏布局 ============
+   新结构: book-toolbar(brand + chapter-block + mission-block + header-actions)
+   maze-stage 弹性占满剩余空间, readButton 舞台内左下悬浮, game-footer 右下悬浮 */
+
+/* --- 工具栏(浅色纸面, 全端共用基础) --- */
+.book-toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px;
+  padding: 8px 14px;
+  background: linear-gradient(105deg, #fffaf0, #efe4ce);
+  border-bottom: 1px solid rgba(211, 197, 170, .65);
+}
+.book-toolbar .brand { flex: 0 0 auto; }
+.book-toolbar .brand-moon { width: 42px; height: 42px; font-size: 25px; }
+.book-toolbar .brand small { color: #a0644a; }
+.book-toolbar .brand strong { font-size: clamp(19px, 2.4vw, 25px); }
+
+.chapter-block { flex: 1 1 240px; min-width: 0; display: flex; align-items: center; gap: 12px; }
+.chapter-block .chapter-number { width: 52px; }
+.chapter-block .chapter-number strong { font-size: 30px; }
+.chapter-block .chapter-copy h1 { margin: 1px 0 2px; font-size: clamp(18px, 2.5vw, 25px); }
+.chapter-block .chapter-progress { flex: 0 0 auto; margin-left: auto; }
+
+.mission-block {
+  flex: 0 1 auto; min-width: 0; display: flex; align-items: center; gap: 9px;
+  padding: 5px 12px; color: #fff8e9;
+  background: linear-gradient(105deg, var(--chapter-deep), var(--chapter-accent) 70%);
+  border-radius: 15px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12), 0 3px 10px rgba(16, 47, 62, .18);
+}
+.mission-block .mission-icon { font-size: 21px; filter: drop-shadow(0 2px 0 rgba(0,0,0,.2)); }
+.mission-block .mission-copy { min-width: 0; }
+.mission-block .mission-copy small { display: block; margin-bottom: 1px; color: #9fc0c7; font-size: 8px; letter-spacing: .12em; }
+.mission-block .mission-copy strong { display: block; overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.mission-block .collection i { width: 25px; height: 25px; font-size: 16px; }
+
+.book-toolbar .header-actions { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.book-toolbar .round-button {
+  width: 44px; height: 44px; color: #2a5561; font-size: 20px;
+  border-color: #c2d2cc; background: rgba(255, 255, 255, .72);
+  box-shadow: 0 3px 0 rgba(120, 140, 128, .32);
+}
+.book-toolbar .difficulty-button {
+  min-height: 44px; padding: 6px 13px; color: #35566a;
+  border-color: #c3d4ce; background: #edf3e5;
+  box-shadow: 0 3px 0 rgba(120, 140, 128, .3);
+}
+.book-toolbar .difficulty-button span { color: #c98a2d; }
+
+/* --- 舞台内悬浮朗读按钮(左下, 避开右上角小地图) --- */
+.stage-read-button {
+  position: absolute; z-index: 5; left: 13px; bottom: 13px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  width: auto; min-width: 48px; min-height: 48px; padding: 0 17px;
+  color: var(--night); font-size: 16px;
+  border: 2px solid rgba(255, 255, 255, .88); border-radius: 99px;
+  background: rgba(248, 241, 223, .78);
+  box-shadow: 0 8px 24px rgba(0, 14, 23, .32);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+  backdrop-filter: blur(10px) saturate(1.1);
+}
+.stage-read-button span { font-size: 19px; line-height: 1; }
+.stage-read-button .read-label { font: 800 13px/1 "Kaiti SC", "STKaiti", serif; letter-spacing: .08em; }
+.stage-read-button:active { transform: translateY(3px); }
+.stage-read-button.is-speaking {
+  color: var(--night); background: rgba(240, 186, 86, .92); border-color: #fff1ba;
+}
+
+/* --- ≥700px: 100dvh 单页不滚动, 舞台弹性占满 --- */
+@media (min-width: 700px) {
+  html, body { height: 100%; overflow: hidden; }
+  body { min-height: 100dvh; }
+  .book-shell {
+    display: flex; flex-direction: column;
+    width: min(98.5vw, 1500px); height: 100dvh;
+    padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  }
+  .story-card {
+    flex: 1 1 auto; min-height: 0;
+    display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr);
+  }
+  .book-toolbar { grid-column: 1; flex-wrap: nowrap; gap: 14px; padding: 6px 14px; }
+  .chapter-block .chapter-copy #chapterStory { max-width: 46vw; }
+
+  .maze-stage { grid-column: 1; grid-row: 2; height: auto; min-height: 0; }
+  .game-footer { grid-column: 1; grid-row: 2; }
+}
+
+/* --- 较窄竖屏: 工具栏紧凑两行, 总高仍远小于旧三层 --- */
+@media (min-width: 700px) and (max-width: 1100px) {
+  .book-toolbar { flex-wrap: wrap; row-gap: 4px; padding: 6px 12px; }
+  .book-toolbar .brand { flex: 0 0 auto; }
+  .book-toolbar .brand small { display: none; }
+  .book-toolbar .brand-moon { width: 38px; height: 38px; font-size: 22px; }
+  .book-toolbar .brand strong { font-size: 18px; }
+  .book-toolbar .header-actions { gap: 6px; }
+  .book-toolbar .difficulty-button { min-width: 44px; padding: 6px 11px; }
+  .book-toolbar .difficulty-button b { display: none; }
+  .mission-block { flex: 1 1 190px; min-width: 190px; padding: 5px 9px; }
+  .chapter-block { order: 3; flex: 1 1 100%; min-height: 36px; gap: 9px; padding-top: 3px; border-top: 1px dashed rgba(211, 197, 170, .8); }
+  .chapter-block .chapter-number { width: 38px; }
+  .chapter-block .chapter-number small,
+  .chapter-block .chapter-copy #chapterKicker,
+  .chapter-block .chapter-copy #chapterStory { display: none; }
+  .chapter-block .chapter-number strong { font-size: 22px; }
+  .chapter-block .chapter-copy h1 { margin: 0; font-size: 18px; white-space: nowrap; }
+}
+
+/* --- 手机 <700px: 正常纵向滚动, 工具栏紧凑换行不横向溢出 --- */
+@media (max-width: 699px) {
+  .book-toolbar { gap: 6px 10px; padding: 8px 10px; }
+  .book-toolbar .brand small { display: none; }
+  .book-toolbar .brand-moon { width: 38px; height: 38px; font-size: 22px; }
+  .chapter-block { order: 3; flex: 1 1 100%; gap: 9px; padding-top: 5px; border-top: 1px dashed rgba(211, 197, 170, .8); }
+  .chapter-block .chapter-progress { display: none; }
+  .mission-block { order: 4; flex: 1 1 100%; padding: 5px 10px; }
+  .mission-block .mission-copy strong { white-space: normal; }
+  .book-toolbar .difficulty-button b { display: none; }
+  .book-toolbar .difficulty-button { min-width: 44px; padding: 6px 11px; }
+  .stage-read-button { left: 9px; bottom: 9px; padding: 0 13px; }
+  .stage-read-button .read-label { display: none; }
+  .stage-read-button { min-width: 48px; }
+}
+
+/* ============ v29 故事书架 ============ */
+.bookshelf-screen[hidden], .book-shell[hidden] { display: none !important; }
+.bookshelf-screen {
+  position: fixed; z-index: 20; inset: 0; overflow: auto;
+  color: #fff8e8;
+  background:
+    radial-gradient(circle at 75% 12%, rgba(240,186,86,.2), transparent 24%),
+    radial-gradient(circle at 18% 82%, rgba(87,151,165,.2), transparent 30%),
+    linear-gradient(145deg, #071d2c, #102f43 52%, #0a2135);
+  -webkit-overflow-scrolling: touch;
+}
+.bookshelf-glow {
+  position: fixed; inset: 0; pointer-events: none; opacity: .32;
+  background-image: radial-gradient(circle, rgba(255,255,255,.48) 0 1px, transparent 1.6px);
+  background-size: 54px 54px;
+  -webkit-mask-image: linear-gradient(to bottom, #000, transparent 70%);
+  mask-image: linear-gradient(to bottom, #000, transparent 70%);
+}
+.bookshelf-inner { position: relative; width: min(1240px, 94vw); min-height: 100%; margin: 0 auto; padding: max(28px, env(safe-area-inset-top)) 0 max(30px, env(safe-area-inset-bottom)); }
+.bookshelf-header { display: flex; align-items: center; gap: 18px; margin: 0 2px 24px; }
+.bookshelf-mark {
+  flex: 0 0 auto; display: grid; place-items: center; width: 66px; height: 66px;
+  color: #5a441f; font: 42px/1 Georgia, serif;
+  border: 2px solid #fff0b5; border-radius: 22px 12px 22px 12px;
+  background: linear-gradient(145deg, #ffe5a0, #dba442);
+  box-shadow: 0 9px 0 rgba(67,42,17,.35), 0 16px 35px rgba(0,0,0,.28);
+  transform: rotate(-4deg);
+}
+.bookshelf-header p { margin: 0 0 3px; color: #e7bd65; font: 800 11px/1.2 ui-rounded, sans-serif; letter-spacing: .22em; }
+.bookshelf-header h1 { margin: 0; font: 900 clamp(28px,4vw,48px)/1.05 "Kaiti SC","STKaiti",serif; letter-spacing: .05em; text-shadow: 0 3px 16px rgba(0,0,0,.34); }
+.bookshelf-header span { display: block; margin-top: 8px; color: #bcd2d3; font: 600 13px/1.5 ui-rounded, sans-serif; }
+.bookshelf-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.story-book {
+  position: relative; display: grid; grid-template-columns: minmax(150px, 42%) minmax(0, 1fr); min-height: 250px; overflow: hidden;
+  border: 1px solid rgba(255,241,196,.32); border-radius: 24px 13px 24px 13px;
+  background: linear-gradient(110deg, rgba(255,251,238,.98), rgba(230,218,190,.97));
+  box-shadow: 0 10px 0 rgba(3,17,26,.48), 0 20px 40px rgba(0,0,0,.3), inset 0 0 0 5px rgba(104,74,37,.08);
+}
+.story-book::after { content:""; position:absolute; left: 42%; top: 0; bottom: 0; width: 8px; transform: translateX(-4px); background: linear-gradient(90deg, rgba(49,32,18,.16), rgba(255,255,255,.28), rgba(49,32,18,.1)); pointer-events:none; }
+.story-book-cover { position: relative; min-height: 250px; background: linear-gradient(rgba(7,27,39,.05),rgba(7,27,39,.2)), var(--book-cover) center/cover no-repeat; }
+.book-number { position:absolute; left:12px; top:12px; padding:6px 9px; color:#fff6d4; font:800 9px/1 ui-rounded,sans-serif; letter-spacing:.13em; border:1px solid rgba(255,255,255,.5); border-radius:99px; background:rgba(7,30,42,.68); backdrop-filter:blur(6px); }
+.story-book-copy { min-width: 0; display:flex; flex-direction:column; align-items:flex-start; padding: 22px 22px 18px 24px; color:#183643; }
+.story-book-copy > small { color:#a0644a; font:800 9px/1.2 ui-rounded,sans-serif; letter-spacing:.14em; }
+.story-book-copy h2 { margin:8px 0 3px; font:900 clamp(21px,2.2vw,30px)/1.08 "Kaiti SC","STKaiti",serif; letter-spacing:.04em; }
+.story-book-copy p { margin:0 0 14px; color:#607478; font:700 12px/1.45 "Kaiti SC","STKaiti",serif; }
+.book-progress { width:100%; margin-top:auto; }
+.book-progress > span { display:block; height:7px; overflow:hidden; border-radius:99px; background:rgba(42,75,80,.14); }
+.book-progress i { display:block; width:var(--progress); height:100%; border-radius:inherit; background:linear-gradient(90deg,#d79d3b,#f4cf75); box-shadow:0 0 10px rgba(220,160,53,.35); }
+.book-progress b { display:block; margin-top:6px; color:#587077; font:800 10px/1 ui-rounded,sans-serif; }
+.book-best { margin-top:5px; color:#9a6b29 !important; letter-spacing:.04em !important; }
+.story-book-copy button { align-self:stretch; display:flex; align-items:center; justify-content:center; gap:10px; min-height:44px; margin-top:14px; color:#fff9e9; font:800 13px/1 ui-rounded,sans-serif; border:1px solid rgba(255,255,255,.2); border-radius:13px; background:linear-gradient(135deg,#1a5660,#183d56); box-shadow:0 4px 0 #0c2935; }
+.story-book-copy button:active { transform:translateY(3px); box-shadow:0 1px 0 #0c2935; }
+.story-book.is-complete { border-color:rgba(238,191,87,.72); box-shadow:0 10px 0 rgba(3,17,26,.48),0 20px 44px rgba(0,0,0,.32),0 0 28px rgba(240,186,86,.2),inset 0 0 0 5px rgba(222,168,67,.12); }
+.completion-seal { position:absolute; right:10px; bottom:12px; display:grid; place-items:center; width:72px; height:72px; color:#6f4919; font:900 23px/1 ui-rounded,sans-serif; border:3px double #9b681e; border-radius:50%; background:radial-gradient(circle,#fff0b3,#e8b34d); box-shadow:0 5px 16px rgba(40,22,5,.35),inset 0 0 0 4px rgba(255,248,207,.52); transform:rotate(-11deg); }
+.completion-seal b { display:block; margin-top:-12px; font-size:10px; letter-spacing:.08em; }
+.future-book { opacity:.64; filter:saturate(.6); }
+.future-cover { display:grid; place-items:center; min-height:250px; color:#d4d9cd; background:radial-gradient(circle at 50% 44%,rgba(203,220,211,.22),transparent 28%),linear-gradient(145deg,#31505b,#172f3e); }
+.future-cover span { position:absolute; left:12px; top:12px; font:800 9px/1 ui-rounded,sans-serif; letter-spacing:.13em; }
+.future-cover b { font:42px/1 Georgia,serif; opacity:.72; }
+.future-book .story-book-copy button { color:#6f7773; background:#d8d9cb; border-color:#c4c4b7; box-shadow:none; }
+.bookshelf-footer { padding:28px 0 4px; color:#91b4b8; text-align:center; font:700 11px/1.4 ui-rounded,sans-serif; letter-spacing:.07em; }
+.bookshelf-footer span { color:#e9bb5d; }
+
+@media (min-width: 1120px) {
+  .bookshelf-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .story-book { grid-template-columns: 1fr; grid-template-rows: 162px auto; }
+  .story-book::after { left:0; right:0; top:162px; bottom:auto; width:auto; height:8px; transform:translateY(-4px); background:linear-gradient(rgba(49,32,18,.16),rgba(255,255,255,.28),rgba(49,32,18,.1)); }
+  .story-book-cover, .future-cover { min-height:162px; }
+  .story-book-copy { min-height:212px; }
+}
+@media (max-width: 720px) {
+  .bookshelf-inner { width:min(94vw,560px); }
+  .bookshelf-header { align-items:flex-start; gap:12px; margin-bottom:18px; }
+  .bookshelf-mark { width:50px; height:50px; font-size:31px; border-radius:16px 9px 16px 9px; }
+  .bookshelf-header h1 { font-size:25px; }
+  .bookshelf-header span { font-size:11px; }
+  .bookshelf-grid { grid-template-columns:1fr; gap:16px; }
+  .story-book { grid-template-columns:132px minmax(0,1fr); min-height:220px; }
+  .story-book::after { left:132px; }
+  .story-book-cover,.future-cover { min-height:220px; }
+  .story-book-copy { padding:18px 16px; }
+  .completion-seal { width:62px; height:62px; }
+}
