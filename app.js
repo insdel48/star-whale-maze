@@ -75,6 +75,7 @@
     trail: [], steps: 0, completed: false, dragging: false, activePointerId: null, hintPath: [],
     touchPoint: null, touchValid: true, boundaryMissAt: 0, gestureVisited: new Set(),
     pointerSamples: [], inputFrame: 0, drawFrame: 0, cameraPending: false,
+    gestureMode: null, panStartPoint: null, panStartCamera: null, panMoved: false,
     width: 0, height: 0, dpr: 1, pad: 50, avgEdge: 45, toastTimer: 0,
     world: { width: 0, height: 0, pagesX: 1, pagesY: 1 },
     camera: { x: 0, y: 0 }, overview: false, cameraFrame: 0
@@ -452,7 +453,10 @@
     state.completed = false; state.dragging = false; state.activePointerId = null;
     state.touchPoint = null; state.touchValid = true; state.hintPath = []; state.overview = false;
     state.gestureVisited = new Set(); state.pointerSamples = []; state.cameraPending = false;
+    state.gestureMode = null; state.panStartPoint = null; state.panStartCamera = null; state.panMoved = false;
     cancelAnimationFrame(state.inputFrame); state.inputFrame = 0;
+    cancelAnimationFrame(state.cameraFrame); state.cameraFrame = 0;
+    canvas.classList.remove("is-panning");
     $(".story-card").classList.remove("overview-mode");
     $("#overviewButton").setAttribute("aria-pressed", "false");
     localStorage.setItem("starmaze-chapter", state.chapter);
@@ -594,6 +598,21 @@
     state.cameraFrame = requestAnimationFrame(animate);
   }
 
+  function panCamera(point) {
+    if (!state.panStartPoint || !state.panStartCamera || state.overview) return;
+    const dx = point.x - state.panStartPoint.x, dy = point.y - state.panStartPoint.y;
+    const maxX = Math.max(0, state.world.width - state.width);
+    const maxY = Math.max(0, state.world.height - state.height);
+    state.camera.x = Math.max(0, Math.min(maxX, state.panStartCamera.x - dx));
+    state.camera.y = Math.max(0, Math.min(maxY, state.panStartCamera.y - dy));
+    if (!state.panMoved && Math.hypot(dx, dy) > 8) {
+      state.panMoved = true;
+      $("#dragHint").classList.add("hidden");
+      $("#storyTip").innerHTML = "<small>正在看地图</small><span>可以回看走过的路，也可以看看前面；找到阿洛后按住他继续走。</span>";
+    }
+    requestDraw();
+  }
+
   function draw() {
     drawScene();
     drawMazePaths();
@@ -638,11 +657,14 @@
       miniCtx.strokeStyle = "rgba(255,255,255,.92)"; miniCtx.lineWidth = 1;
       miniCtx.strokeRect(inset + state.camera.x / state.world.width * (w - inset * 2), inset + state.camera.y / state.world.height * (h - inset * 2), Math.max(8, state.width / state.world.width * (w - inset * 2)), Math.max(7, state.height / state.world.height * (h - inset * 2)));
     }
-    const column = Math.min(state.world.pagesX - 1, Math.max(0, Math.floor(worldPoint(current).x / state.width)));
-    const row = Math.min(state.world.pagesY - 1, Math.max(0, Math.floor(worldPoint(current).y / state.height)));
-    const page = state.graph.illustrated ? Math.min(4, Math.floor(current.x * 4) + 1) : row * state.world.pagesX + column + 1;
+    const viewCenterX = state.camera.x + state.width / 2, viewCenterY = state.camera.y + state.height / 2;
+    const column = Math.min(state.world.pagesX - 1, Math.max(0, Math.floor(viewCenterX / state.width)));
+    const row = Math.min(state.world.pagesY - 1, Math.max(0, Math.floor(viewCenterY / state.height)));
+    const illustratedProgress = Math.max(0, Math.min(.999, (viewCenterX - state.pad) / Math.max(1, state.world.width - state.pad * 2)));
+    const page = state.graph.illustrated ? Math.floor(illustratedProgress * 4) + 1 : row * state.world.pagesX + column + 1;
     const pageCount = state.graph.illustrated ? 4 : state.world.pagesX * state.world.pagesY;
-    $("#worldPage").textContent = state.overview ? `完整绘本地图 · ${state.graph.nodes.length} 个路口` : `探索区域 ${page} / ${pageCount}`;
+    const pageMode = state.panMoved ? "查看区域" : "探索区域";
+    $("#worldPage").textContent = state.overview ? `完整绘本地图 · ${state.graph.nodes.length} 个路口` : `${pageMode} ${page} / ${pageCount}`;
   }
 
   function drawScene() {
@@ -977,11 +999,11 @@
     const chapter = chapters[state.chapter];
     const tip = $("#storyTip span")?.textContent || "";
     const found = state.found.size ? `已经找到 ${state.found.size} 件宝物。` : "宝物还在迷宫里等你。";
-    return `第 ${state.chapter + 1} 章，${chapter.title}。${chapter.story}。这一页的任务：${chapter.mission}。${found}${tip}。玩法提示：按住阿洛，沿着发光小路慢慢拖动。`;
+    return `第 ${state.chapter + 1} 章，${chapter.title}。${chapter.story}。这一页的任务：${chapter.mission}。${found}${tip}。玩法提示：按住阿洛，沿着发光小路慢慢拖动。按住地图其他位置拖动，可以随时查看走过的路和前面的区域。`;
   }
 
   function introNarration() {
-    return "故事开始了。那天晚上，一颗星星落进了雨里。阿洛在窗外发现一只迷路的小星鲸。它的五盏星灯散落在奇怪的世界里。只有穿过所有迷宫，才能送它回到天空。按住阿洛，沿发光边界内拖动。先找齐这一页的宝物。";
+    return "故事开始了。那天晚上，一颗星星落进了雨里。阿洛在窗外发现一只迷路的小星鲸。它的五盏星灯散落在奇怪的世界里。只有穿过所有迷宫，才能送它回到天空。按住阿洛，沿发光边界内拖动。拖动地图其他位置，可以随时查看前后的路。先找齐这一页的宝物。";
   }
 
   function winNarration() {
@@ -1036,23 +1058,36 @@
     event.preventDefault();
     const point=pointerPosition(event),player=screenPoint(state.graph.nodes[state.current]),road=nearestReachableRoad(point);
     const canGrab=Math.hypot(point.x-player.x,point.y-player.y)<=Math.max(52,touchTolerance()*1.35)||road.distance<=touchTolerance();
-    if(!canGrab){state.touchPoint=point;state.touchValid=false;state.dragging=true;requestDraw();setTimeout(()=>{state.dragging=false;state.touchPoint=null;requestDraw();},220);return;}
-    state.activePointerId=event.pointerId;state.dragging=true;state.touchPoint=point;state.touchValid=true;
-    state.gestureVisited=new Set([state.current]);state.pointerSamples=[];state.cameraPending=false;
-    canvas.setPointerCapture(event.pointerId);moveToward(point);
+    state.activePointerId=event.pointerId;state.pointerSamples=[];state.cameraPending=false;
+    canvas.setPointerCapture(event.pointerId);
+    if(canGrab){
+      state.gestureMode="move";state.dragging=true;state.touchPoint=point;state.touchValid=true;
+      state.gestureVisited=new Set([state.current]);state.panMoved=false;moveToward(point);
+      return;
+    }
+    cancelAnimationFrame(state.cameraFrame);state.cameraFrame=0;
+    state.gestureMode="pan";state.dragging=false;state.touchPoint=null;state.touchValid=true;
+    state.panStartPoint=point;state.panStartCamera={...state.camera};state.panMoved=false;
+    canvas.classList.add("is-panning");
   });
   canvas.addEventListener("pointermove",(event)=>{
-    if(!state.dragging||event.pointerId!==state.activePointerId)return;
+    if(!state.gestureMode||event.pointerId!==state.activePointerId)return;
     event.preventDefault();
-    queuePointerSamples(event);
+    if(state.gestureMode==="pan")panCamera(pointerPosition(event));
+    else queuePointerSamples(event);
   });
   function endPointer(event){
     if(event.pointerId!==state.activePointerId)return;
-    if(event.type==="pointerup")state.pointerSamples.push(pointerPosition(event));
-    flushPointerSamples();
-    state.dragging=false;state.activePointerId=null;state.touchPoint=null;state.touchValid=true;state.gestureVisited=new Set();
-    if(state.cameraPending){state.cameraPending=false;centerCameraOnCurrent();}
-    else requestDraw();
+    const mode=state.gestureMode;
+    if(mode==="move"){
+      if(event.type==="pointerup")state.pointerSamples.push(pointerPosition(event));
+      flushPointerSamples();
+    }else if(mode==="pan"&&event.type==="pointerup")panCamera(pointerPosition(event));
+    state.dragging=false;state.activePointerId=null;state.touchPoint=null;state.touchValid=true;
+    state.gestureVisited=new Set();state.gestureMode=null;state.panStartPoint=null;state.panStartCamera=null;
+    canvas.classList.remove("is-panning");
+    if(mode==="move"&&state.cameraPending){state.cameraPending=false;centerCameraOnCurrent();}
+    else{state.cameraPending=false;requestDraw();}
   }
   canvas.addEventListener("pointerup",endPointer);canvas.addEventListener("pointercancel",endPointer);canvas.addEventListener("lostpointercapture",endPointer);
   window.addEventListener("resize",resizeCanvas);
@@ -1064,7 +1099,7 @@
   $("#chapterButton").addEventListener("click",()=>{updateChapterList();$("#chapterDialog").showModal();});
   $("#difficultyButton").addEventListener("click",()=>$("#difficultyDialog").showModal());
   $("#installButton").addEventListener("click",openInstallHelp);$("#outsideButton").addEventListener("click",openInstallHelp);
-  $("#overviewButton").addEventListener("click",()=>{state.overview=!state.overview;$(".story-card").classList.toggle("overview-mode",state.overview);$("#overviewButton").setAttribute("aria-pressed",String(state.overview));$("#overviewButton b").textContent=state.overview?"返回":"全图";if(!state.overview)centerCameraOnCurrent(true);updateAverageEdge();showToast(state.overview?"现在看到的是完整世界，再点一次回到阿洛身边。":"回到阿洛身边，继续沿路探险。",1800);requestDraw();});
+  $("#overviewButton").addEventListener("click",()=>{state.overview=!state.overview;$(".story-card").classList.toggle("overview-mode",state.overview);$("#overviewButton").setAttribute("aria-pressed",String(state.overview));$("#overviewButton b").textContent=state.overview?"返回":"全图";if(!state.overview){state.panMoved=false;centerCameraOnCurrent(true);}updateAverageEdge();showToast(state.overview?"现在看到的是完整世界，再点一次回到阿洛身边。":"回到阿洛身边，继续沿路探险。",1800);requestDraw();});
   $("#hintButton").addEventListener("click",showHint);$("#newMazeButton").addEventListener("click",()=>startChapter());
   document.querySelectorAll("[data-close]").forEach((button)=>button.addEventListener("click",()=>{stopNarration();const dialog=$(`#${button.dataset.close}`);dialog.close();if(button.dataset.close==="introDialog")localStorage.setItem("starmaze-intro","seen");}));
   $("#soundButton").setAttribute("aria-pressed",String(state.sound));
