@@ -8,8 +8,4 @@
 
 ## 已解除的权限阻塞
 - 用户已明确授权；`optimize-foundation` 分支创建成功，本机 8000 端口预览已启动。
-
-## 2. 自动创建 Pull Request
-- `optimize-foundation` 已成功推送到 `origin`，但 GitHub 集成创建 PR 返回 403 `Resource not accessible by integration`。
-- 本机 `gh auth status` 同时显示账号 `insdel48` 的 token 已失效，因此无法用 CLI 后备方式创建 PR。
-- 请重新登录 GitHub 后，从 `main` 合并 `optimize-foundation`，或打开：`https://github.com/insdel48/star-whale-maze/compare/main...optimize-foundation?expand=1`。
+- GitHub CLI 登录已恢复；自动创建 Pull Request 的权限阻塞已解除。

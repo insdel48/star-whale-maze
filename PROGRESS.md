@@ -83,4 +83,4 @@
 - 浏览器自动化安全策略不允许再次导航到 `file://` 地址，因此没有用自动化工具重复双击实测；实现仍使用预加载的 window JS、没有 fetch，且最初本地 file 页面可正常打开。此限制不影响 HTTP 浏览器验收。
 - 发布前静态检查：`node --check app.js`、`node --check sw.js`、7 个 level 文件语法检查、`git diff --check` 均通过。
 - 白名单核对：改动仅涉及 app/index/sw/README、七张场景图 PNG→WebP、levels/、tools/、PROGRESS.md、BLOCKED.md；styles.css 与 manifest.webmanifest 未改。
-- 已创建提交并把 `optimize-foundation` 推送到 `origin`；自动创建草稿 PR 因 GitHub 集成 403 且本机 gh token 失效而未成功，已写入 BLOCKED.md，并提供可直接打开的比较链接。
+- 已创建提交并把 `optimize-foundation` 推送到 `origin`；随后 GitHub CLI 登录恢复，具备创建与合并 Pull Request 的条件。
