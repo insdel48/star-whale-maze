@@ -364,6 +364,20 @@ button:focus-visible { outline: 4px solid rgba(240,186,86,.7); outline-offset: 3
   .header-read-button b { display: none; }
 }
 
+/* 横屏平板里让故事开场一次看完整，不必为了“开始”按钮上下翻页。 */
+@media (orientation: landscape) and (max-height: 900px) {
+  #introDialog { padding: 10px; }
+  #introDialog .dialog-card { max-height: calc(100dvh - 20px); padding: 19px 24px 17px; }
+  #introDialog .intro-sky { height: 90px; margin: -7px -7px 8px; }
+  #introDialog h2 { margin: 5px 0 8px; font-size: clamp(25px, 4.2vh, 33px); }
+  #introDialog p { margin: 7px 0; font-size: 13px; line-height: 1.48; }
+  #introDialog .story-read-button { min-height: 43px; margin: 3px 0 7px; }
+  #introDialog .intro-rule { margin: 5px 0; padding: 7px 12px; }
+  #introDialog .intro-rule span { font-size: 19px; }
+  #introDialog .intro-rule b { font-size: 12px; }
+  #introDialog .primary-button { min-height: 48px; margin-top: 10px; padding: 11px 16px; }
+}
+
 /* ============ 沉浸式迷宫画幅（v21） ============ */
 @media (min-width: 700px) {
   .story-card {

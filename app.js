@@ -9,7 +9,8 @@
   const stage = $("#mazeStage");
   const sceneImageFiles = {
     forest: "forest-maze-v1.png", clock: "clock-maze-v1.png", dragon: "dragon-maze-v1.png",
-    sea: "sea-maze-v1.png", stars: "stars-maze-v1.png", cloudtrain: "cloud-train-maze-v1.png"
+    sea: "sea-maze-v1.png", stars: "stars-maze-v1.png", cloudtrain: "cloud-train-maze-v1.png",
+    moonlibrary: "moon-library-maze-v1.png"
   };
   const sceneImages = Object.fromEntries(Object.entries(sceneImageFiles).map(([theme, file]) => {
     const image = new Image();
@@ -65,11 +66,22 @@
         "雪洞冻住了最后一张车票。阿洛把提灯贴近冰面，温暖让列车重新响起汽笛。"
       ],
       winKicker: "花谷终于等到了雨", winTitle: "朵朵搭上了回家的列车", winStory: "列车驶进彩虹站，朵朵化成一场温柔的雨。花朵抬起头，阿洛收到一张写着“下次见”的云朵车票。", theme: "cloudtrain", goalName: "彩虹站"
+    },
+    {
+      title: "逃走的故事页", kicker: "月亮落下以前", icon: "📚", item: "📜", goal: "🌙",
+      mission: "找回 3 张故事页，打开月亮书库",
+      story: "午夜的风把一本没有结尾的故事吹散了。三张故事页变成纸鸟，飞进花园、墨水河和猫头鹰钟楼。",
+      finds: [
+        "第一张故事页躲在花园里。它写着：每一次勇敢出发，都是故事真正的开头。",
+        "第二张故事页落进墨水河。阿洛把它折成一座纸桥，空白的地方慢慢浮出新的道路。",
+        "最后一张故事页被猫头鹰守着。猫头鹰说：结尾不是故事停下来，而是朋友带着故事回家。"
+      ],
+      winKicker: "月亮书库重新亮了", winTitle: "所有晚安故事都有了结尾", winStory: "三张故事页飞回书中。月亮书库一盏接一盏亮起来，睡着的小朋友都在梦里翻到了最温暖的最后一页。", theme: "moonlibrary", goalName: "月亮书库"
     }
   ];
 
   chapters.forEach((chapter, index) => {
-    chapter.storyId = index < 5 ? "starwhale" : "cloudtrain";
+    chapter.storyId = index < 5 ? "starwhale" : index === 5 ? "cloudtrain" : "moonlibrary";
     chapter.storyChapter = index < 5 ? index : 0;
   });
 
@@ -87,6 +99,13 @@
       introTitle: "最后一班送雨列车，<br />已经开走了",
       introStory: "一朵叫朵朵的小云错过了最后一班送雨列车。远方的花谷正等着下雨，阿洛答应陪它穿过雾站、花田和雪洞，一直走到彩虹站。",
       introButton: "陪朵朵去车站！", introIcon: "☁️"
+    },
+    {
+      id: "moonlibrary", title: "阿洛与月光图书馆", subtitle: "逃走的故事页", cover: sceneImageFiles.moonlibrary,
+      chapterIndices: [6], badge: "第三部 · 1 张月光大迷宫",
+      introTitle: "午夜的风，<br />吹走了故事的最后一页",
+      introStory: "月光图书馆里，一本没有结尾的故事忽然散开了。小狐狸管理员墨墨请阿洛在月亮落下前，穿过书塔和墨水河，把三张逃走的故事页带回书库。",
+      introButton: "去找故事的结尾！", introIcon: "🦊"
     }
   ];
 
@@ -436,6 +455,50 @@
     return graph;
   }
 
+  function illustratedMoonLibraryGraph() {
+    const points = {
+      start:[.071,.746], s1:[.099,.701], s2:[.129,.655], s3:[.163,.618], hubL:[.202,.586],
+      g1:[.180,.540], g2:[.148,.503], g3:[.124,.455], g4:[.131,.398], page1:[.155,.332],
+      g6:[.206,.334], g7:[.244,.362], g8:[.279,.408], hubC:[.323,.430],
+      u1:[.196,.461], u2:[.234,.450], u3:[.270,.475], u4:[.211,.278], u5:[.260,.279],
+      u6:[.306,.317], u7:[.345,.365], bookArch:[.278,.226], hedgeDead:[.083,.305],
+      libraryDead:[.257,.522], gd1:[.207,.400],
+      low0:[.108,.806], low1:[.159,.834], low2:[.211,.802], l1:[.223,.631], l2:[.266,.650],
+      l3:[.305,.628], bridgeW:[.345,.606], riverHub:[.387,.637], rl1:[.398,.735], boatDead:[.338,.702],
+      c1:[.365,.397], c2:[.410,.375], c3:[.456,.350], c4:[.499,.331], c5:[.543,.329],
+      towerTop:[.574,.275], cLow1:[.352,.488], cLow2:[.398,.508], cLow3:[.446,.500],
+      stairDead:[.374,.565], towerInner1:[.428,.428], towerInner2:[.475,.447],
+      t1:[.552,.202], t2:[.505,.164], t3:[.448,.185], balconyDead:[.445,.292],
+      r1:[.430,.672], page2:[.468,.751], r3:[.520,.751], r4:[.564,.707], bridgeE:[.616,.693],
+      islandHub:[.666,.715], dock1:[.719,.758], dock2:[.774,.809], dockEnd:[.756,.861],
+      rivUp:[.489,.565], rivMid:[.540,.600], midEast:[.664,.624], le1:[.708,.648], eastLower:[.707,.574],
+      eastHub:[.584,.373], o1:[.622,.320], o2:[.657,.276], page3:[.713,.294], o4:[.758,.328],
+      om1:[.623,.410], om2:[.666,.438], om3:[.716,.437], gearDead:[.688,.374],
+      ot1:[.658,.204], ot2:[.707,.159], ot3:[.758,.194], owlDead:[.725,.225],
+      rightHub:[.796,.398], e1:[.839,.426], e2:[.875,.422], topR:[.816,.337],
+      lowerR1:[.811,.492], lowerR2:[.852,.536], lowerR3:[.895,.544], bookDead:[.862,.625],
+      i2:[.728,.702], goal:[.930,.438]
+    };
+    const paths = [
+      ["start","s1","s2","s3","hubL","g1","g2","g3","g4","page1","g6","g7","g8","hubC","c1","c2","c3","c4","c5","eastHub","o1","o2","page3","o4","rightHub","e1","e2","goal"],
+      ["page1","u4","u5","u6","u7","hubC"], ["u5","bookArch"], ["page1","hedgeDead"],
+      ["g2","u1","u2","u3","g8"], ["u3","libraryDead"], ["g6","gd1","u1"],
+      ["start","low0","low1","low2","l2","l1","hubL"],
+      ["hubL","l1","l2","l3","bridgeW","riverHub","r1","page2","r3","r4","bridgeE","islandHub","le1","eastLower","lowerR1","lowerR2","lowerR3","goal"],
+      ["riverHub","rl1","page2"], ["riverHub","boatDead"],
+      ["hubC","cLow1","cLow2","cLow3","c4"], ["cLow2","stairDead"],
+      ["c3","towerInner1","towerInner2","cLow3"], ["c2","balconyDead"],
+      ["c5","towerTop","t1","t2","t3","c3"], ["towerTop","ot1","o2"],
+      ["eastHub","om1","om2","om3","o4"], ["om2","gearDead"],
+      ["o2","ot1","ot2","ot3","page3"], ["page3","owlDead"],
+      ["rightHub","topR","e2"], ["rightHub","lowerR1"],
+      ["cLow3","rivUp","rivMid","r4"], ["bridgeE","midEast","eastLower"],
+      ["islandHub","i2","lowerR2"], ["islandHub","dock1","dock2"], ["dock1","dockEnd"],
+      ["lowerR2","bookDead"]
+    ];
+    return buildIllustratedGraph(points, paths, { start:"start", goal:"goal", collectibles:["page1","page2","page3"] });
+  }
+
   function carveMaze(base, rng) {
     const candidates = Array.from({ length: base.nodes.length }, () => []);
     base.edges.forEach(([a,b]) => { candidates[a].push(b); candidates[b].push(a); });
@@ -509,7 +572,8 @@
     const rng = mulberry32(state.seed + chapterIndex * 99991 + state.difficulty * 7127);
     const illustratedFactories = {
       forest: illustratedForestGraph, clock: illustratedClockGraph, dragon: illustratedDragonGraph,
-      sea: illustratedSeaGraph, stars: illustratedStarsGraph, cloudtrain: illustratedCloudTrainGraph
+      sea: illustratedSeaGraph, stars: illustratedStarsGraph, cloudtrain: illustratedCloudTrainGraph,
+      moonlibrary: illustratedMoonLibraryGraph
     };
     const factory = illustratedFactories[chapters[chapterIndex].theme];
     if (factory) state.graph = factory();
@@ -543,7 +607,8 @@
     const chapter = chapters[state.chapter];
     const palette = {
       forest:["#174f54","#102f3e"], clock:["#82632f","#253e51"], dragon:["#3f7468","#274854"],
-      sea:["#227b94","#153f63"], stars:["#4859a0","#202b66"], cloudtrain:["#8a6932","#203e66"]
+      sea:["#227b94","#153f63"], stars:["#4859a0","#202b66"], cloudtrain:["#8a6932","#203e66"],
+      moonlibrary:["#a06b35","#172f58"]
     }[chapter.theme];
     document.documentElement.style.setProperty("--chapter-accent", palette[0]);
     document.documentElement.style.setProperty("--chapter-deep", palette[1]);
@@ -589,6 +654,7 @@
     $("#introStory").textContent = story.introStory;
     $("#introStartButton").textContent = story.introButton;
     $("#introDialog .intro-sky span").textContent = story.introIcon;
+    $("#introDialog .intro-sky").style.backgroundImage = `linear-gradient(90deg,rgba(12,24,66,.06),rgba(12,24,66,.22)),url('./assets/scenes/${story.cover}')`;
   }
 
   function renderBookshelf() {
@@ -604,7 +670,7 @@
         <div class="story-book-copy"><small>${story.badge}</small><h2>${story.title}</h2><p>${story.subtitle}</p><div class="book-progress"><span><i style="--progress:${progress.completed ? 100 : Math.round(finished / total * 100)}%"></i></span><b>${status} · ${progress.completed ? total : finished}/${total}</b></div>${best}<button type="button" data-story="${story.id}">${action}<span>→</span></button></div>
       </article>`;
     }).join("");
-    const future = [3, 4, 5, 6].map((number) => `<article class="story-book future-book" aria-disabled="true"><div class="future-cover"><span>STORY ${String(number).padStart(2,"0")}</span><b>${["✦","☁","⌁","☾"][number - 3]}</b></div><div class="story-book-copy"><small>新的冒险</small><h2>第 ${number} 部故事</h2><p>绘本工坊正在装订这一页……</p><button type="button" disabled>即将到来</button></div></article>`).join("");
+    const future = [4, 5, 6].map((number) => `<article class="story-book future-book" aria-disabled="true"><div class="future-cover"><span>STORY ${String(number).padStart(2,"0")}</span><b>${["✦","☁","⌁"][number - 4]}</b></div><div class="story-book-copy"><small>新的冒险</small><h2>第 ${number} 部故事</h2><p>绘本工坊正在装订这一页……</p><button type="button" disabled>即将到来</button></div></article>`).join("");
     $("#bookshelfGrid").innerHTML = playable + future;
     $("#bookshelfGrid").querySelectorAll("[data-story]").forEach((button) => button.addEventListener("click", () => openStory(button.dataset.story)));
   }
@@ -805,7 +871,8 @@
     const theme = chapters[state.chapter].theme;
     const gradients = {
       forest: ["#9ab9a0", "#416f69"], clock: ["#dfc68d", "#8f6d4f"], dragon: ["#9aa8a2", "#475b58"],
-      sea: ["#72b7bc", "#2c7084"], stars: ["#1f4168", "#091d38"], cloudtrain: ["#6fa4b5", "#213c68"]
+      sea: ["#72b7bc", "#2c7084"], stars: ["#1f4168", "#091d38"], cloudtrain: ["#6fa4b5", "#213c68"],
+      moonlibrary: ["#425c82", "#08162e"]
     };
     const gradient = ctx.createLinearGradient(0, 0, state.width, state.height);
     gradient.addColorStop(0, gradients[theme][0]); gradient.addColorStop(1, gradients[theme][1]);
@@ -898,7 +965,7 @@
       return;
     }
     const theme=chapters[state.chapter].theme;
-    const colors={forest:["rgba(20,53,46,.74)","#e8dfbd"],clock:["rgba(74,45,29,.68)","#f3dfaa"],dragon:["rgba(24,43,41,.76)","#d9d5bd"],sea:["rgba(9,58,73,.72)","#d8e1c4"],stars:["rgba(0,7,28,.76)","#bcd8d6"]}[theme];
+    const colors={forest:["rgba(20,53,46,.74)","#e8dfbd"],clock:["rgba(74,45,29,.68)","#f3dfaa"],dragon:["rgba(24,43,41,.76)","#d9d5bd"],sea:["rgba(9,58,73,.72)","#d8e1c4"],stars:["rgba(0,7,28,.76)","#bcd8d6"],cloudtrain:["rgba(12,40,62,.72)","#f3e3af"],moonlibrary:["rgba(7,21,43,.7)","#f5ddb0"]}[theme];
     const inner=Math.max(7,Math.min(15,state.avgEdge*.23)), outer=inner+7;
     ctx.lineCap="round";ctx.lineJoin="round";
     ctx.strokeStyle=colors[0];ctx.lineWidth=outer;
