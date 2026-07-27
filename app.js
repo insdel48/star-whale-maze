@@ -8,9 +8,9 @@
   const miniCtx = miniMap.getContext("2d");
   const stage = $("#mazeStage");
   const sceneImageFiles = {
-    forest: "forest-maze-v1.png", clock: "clock-maze-v1.png", dragon: "dragon-maze-v1.png",
-    sea: "sea-maze-v1.png", stars: "stars-maze-v1.png", cloudtrain: "cloud-train-maze-v1.png",
-    moonlibrary: "moon-library-maze-v1.png"
+    forest: "forest-maze-v1.webp", clock: "clock-maze-v1.webp", dragon: "dragon-maze-v1.webp",
+    sea: "sea-maze-v1.webp", stars: "stars-maze-v1.webp", cloudtrain: "cloud-train-maze-v1.webp",
+    moonlibrary: "moon-library-maze-v1.webp"
   };
   const sceneImages = Object.fromEntries(Object.entries(sceneImageFiles).map(([theme, file]) => {
     const image = new Image();
@@ -170,350 +170,21 @@
     };
   }
 
-  function shuffle(array, rng) {
-    const copy = [...array];
-    for (let i = copy.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(rng() * (i + 1));
-      [copy[i], copy[j]] = [copy[j], copy[i]];
-    }
-    return copy;
-  }
-
-  function gridBase(cols, rows, warp, filter = () => true) {
-    const nodes = [], lookup = new Map(), edges = [];
-    for (let row = 0; row < rows; row += 1) {
-      for (let col = 0; col < cols; col += 1) {
-        if (!filter(col, row, cols, rows)) continue;
-        const point = warp(col, row, cols, rows);
-        const id = nodes.length;
-        nodes.push({ id, x: point.x, y: point.y, col, row, ...point.meta });
-        lookup.set(`${col},${row}`, id);
-      }
-    }
-    nodes.forEach((node) => {
-      [[1,0],[0,1]].forEach(([dx,dy]) => {
-        const other = lookup.get(`${node.col + dx},${node.row + dy}`);
-        if (other !== undefined) edges.push([node.id, other]);
-      });
-    });
-    return { nodes, edges };
-  }
-
-  function hexBase(cols, rows) {
-    const nodes = [], lookup = new Map(), edges = [];
-    for (let row = 0; row < rows; row += 1) {
-      for (let col = 0; col < cols; col += 1) {
-        const nx = (col + .5 * (row % 2)) / (cols - .5);
-        const ny = row / (rows - 1);
-        if (((nx - .5) ** 2 / .29 + (ny - .5) ** 2 / .31) > 1.05) continue;
-        const id = nodes.length;
-        nodes.push({ id, x: .08 + nx * .84, y: .08 + ny * .84, col, row });
-        lookup.set(`${col},${row}`, id);
-      }
-    }
-    nodes.forEach((node) => {
-      const directions = node.row % 2 ? [[1,0],[0,1],[1,1]] : [[1,0],[-1,1],[0,1]];
-      directions.forEach(([dx,dy]) => {
-        const other = lookup.get(`${node.col + dx},${node.row + dy}`);
-        if (other !== undefined) edges.push([node.id, other]);
-      });
-    });
-    return { nodes, edges };
-  }
-
-  function polarBase(rings, sectors) {
-    const nodes = [{ id: 0, x: .5, y: .5, ring: 0, sector: 0 }], edges = [];
-    for (let ring = 1; ring <= rings; ring += 1) {
-      const radius = .085 + ring * (.39 / rings);
-      for (let sector = 0; sector < sectors; sector += 1) {
-        const angle = -Math.PI / 2 + sector * Math.PI * 2 / sectors;
-        nodes.push({ id: nodes.length, x: .5 + Math.cos(angle) * radius, y: .5 + Math.sin(angle) * radius, ring, sector, angle });
-      }
-    }
-    const idAt = (ring, sector) => 1 + (ring - 1) * sectors + (sector % sectors + sectors) % sectors;
-    for (let sector = 0; sector < sectors; sector += 1) edges.push([0, idAt(1, sector)]);
-    for (let ring = 1; ring <= rings; ring += 1) {
-      for (let sector = 0; sector < sectors; sector += 1) {
-        edges.push([idAt(ring, sector), idAt(ring, sector + 1)]);
-        if (ring < rings) edges.push([idAt(ring, sector), idAt(ring + 1, sector)]);
-      }
-    }
-    return { nodes, edges };
-  }
-
-  function createBase(theme, level, rng) {
-    if (theme === "clock") {
-      const configs = [[6,16],[9,24],[12,32]];
-      return polarBase(...configs[level]);
-    }
-    if (theme === "dragon") {
-      const configs = [[13,9],[19,12],[25,16]];
-      return hexBase(...configs[level]);
-    }
-    const configs = {
-      forest: [[12,8],[18,11],[26,14]],
-      sea: [[12,8],[18,11],[26,14]],
-      stars: [[13,9],[19,12],[27,15]]
-    };
-    const [cols, rows] = configs[theme][level];
-    return gridBase(cols, rows, (col, row, c, r) => {
-      const u = col / (c - 1), v = row / (r - 1);
-      if (theme === "forest") {
-        return { x: .08 + u * .84 + Math.sin(row * 1.7 + col) * .012, y: .08 + v * .84 + Math.sin(col * 1.3) * .018 };
-      }
-      if (theme === "sea") {
-        return { x: .07 + u * .86 + Math.sin(v * 9 + col) * .018, y: .09 + v * .82 + Math.sin(u * 8 + row) * .025 };
-      }
-      return { x: .09 + u * .82 + (rng() - .5) * .035, y: .08 + v * .84 + (rng() - .5) * .04 };
-    }, theme === "stars" ? (col, row, c, r) => {
-      const x = col / (c - 1) - .5, y = row / (r - 1) - .5;
-      return x * x / .29 + y * y / .31 < 1.08;
-    } : undefined);
-  }
-
-  function illustratedForestGraph() {
-    const points = {
-      start:[.084,.602], a1:[.104,.566], a2:[.127,.523], j1:[.143,.469],
-      lamp1:[.216,.374], t1:[.184,.397], t2:[.239,.337], t3:[.248,.286], t4:[.228,.247],
-      t5:[.275,.218], t6:[.326,.222], treeDoor:[.347,.166], top7:[.371,.194], top8:[.405,.242],
-      top9:[.393,.302], top10:[.424,.335], waterfall:[.482,.160], uc1:[.462,.243], uc2:[.477,.309],
-      l1:[.151,.574], l2:[.193,.617], bridge1:[.267,.645], l4:[.319,.603], l5:[.353,.536],
-      shrineL:[.397,.486], shrineTop:[.427,.424], lamp2:[.458,.492], shrineR:[.492,.550],
-      mid1:[.459,.373], mid2:[.510,.404], mid3:[.537,.462], mid4:[.516,.522], mid5:[.551,.580],
-      mid6:[.614,.599], mid7:[.648,.566],
-      stone1:[.525,.328], stone2:[.576,.291], stoneDead:[.633,.273], up1:[.576,.237], up2:[.616,.196],
-      up3:[.682,.178], up4:[.747,.210], up5:[.771,.277], rt1:[.815,.315], rt2:[.862,.294], goal:[.914,.246],
-      loop1:[.613,.345], loop2:[.658,.327], loop3:[.701,.349], loop4:[.713,.407], loop5:[.678,.455],
-      loop6:[.702,.510], loop7:[.755,.522], pond1:[.780,.406], pond2:[.814,.440], pond3:[.861,.421], pond4:[.886,.359],
-      lower1:[.466,.620], lower2:[.490,.681], lower3:[.548,.731], lower4:[.607,.752], lower5:[.651,.713],
-      lamp3:[.696,.681], lower7:[.729,.642], lower8:[.756,.583], village1:[.788,.630], village2:[.800,.692],
-      village3:[.839,.741], village4:[.891,.762], cottage:[.935,.692], southBridge:[.830,.850],
-      pondL1:[.221,.686], pondL2:[.176,.738], pondL3:[.192,.796], pondL4:[.259,.851], pondL5:[.343,.887],
-      pondL6:[.430,.878], pondL7:[.513,.835]
-    };
-    const keys = Object.keys(points);
-    const ids = Object.fromEntries(keys.map((key, id) => [key, id]));
-    const nodes = keys.map((key, id) => ({ id, key, x: points[key][0], y: points[key][1] }));
-    const paths = [
-      ["start","a1","a2","j1","t1","lamp1","t2","t3","t4","t5","t6","top7","top8","top9","top10","mid1","uc2"],
-      ["t6","treeDoor"], ["top8","uc1","waterfall"], ["uc1","uc2"],
-      ["a2","l1","l2","bridge1","l4","l5","shrineL","shrineTop","mid1"],
-      ["shrineL","lamp2","shrineR","mid4","mid3","mid2","mid1"],
-      ["uc2","stone1","stone2","up1","up2","up3","up4","up5","rt1","rt2","goal"],
-      ["stone2","stoneDead"], ["stone2","loop1","loop2","loop3","loop4","pond1","pond2","pond3","pond4","rt2"],
-      ["loop4","loop5","loop6","loop7","pond1"],
-      ["mid2","mid3","mid4","mid5","mid6","mid7","loop6"],
-      ["shrineR","lower1","lower2","lower3","lower4","lower5","lamp3","lower7","lower8","loop7"],
-      ["lower8","village1","village2","village3","village4","cottage"],
-      ["village4","southBridge"], ["pond3","loop7"],
-      ["bridge1","pondL1","pondL2","pondL3","pondL4","pondL5","pondL6","pondL7","lower4"]
-    ];
-    const edgeKeys = new Set(), edges = [];
-    paths.forEach((path) => path.slice(1).forEach((key, index) => {
-      const a = ids[path[index]], b = ids[key], edgeKey = a < b ? `${a}:${b}` : `${b}:${a}`;
-      if (!edgeKeys.has(edgeKey)) { edgeKeys.add(edgeKey); edges.push([a,b]); }
-    }));
+  function illustratedGraph(theme) {
+    const data = window.STAR_MAZE_LEVELS?.[theme];
+    if (!data) throw new Error(theme + ": missing level data");
+    const nodes = data.nodes.map((node) => ({ ...node }));
+    const edges = data.edges.map(([a, b]) => [a, b]);
     const adjacency = Array.from({ length: nodes.length }, () => []);
-    edges.forEach(([a,b]) => { adjacency[a].push(b); adjacency[b].push(a); });
-    return { nodes, edges, adjacency, illustrated: true, special: { start: ids.start, goal: ids.goal, collectibles: [ids.lamp1, ids.lamp2, ids.lamp3] } };
-  }
-
-  function buildIllustratedGraph(points, paths, specialKeys) {
-    const keys = Object.keys(points);
-    const ids = Object.fromEntries(keys.map((key, id) => [key, id]));
-    const nodes = keys.map((key, id) => ({ id, key, x: points[key][0], y: points[key][1] }));
-    const edgeKeys = new Set(), edges = [];
-    paths.forEach((path) => path.slice(1).forEach((key, index) => {
-      const a = ids[path[index]], b = ids[key], edgeKey = a < b ? `${a}:${b}` : `${b}:${a}`;
-      if (!edgeKeys.has(edgeKey)) { edgeKeys.add(edgeKey); edges.push([a,b]); }
-    }));
-    const adjacency = Array.from({ length: nodes.length }, () => []);
-    edges.forEach(([a,b]) => { adjacency[a].push(b); adjacency[b].push(a); });
+    edges.forEach(([a, b]) => { adjacency[a].push(b); adjacency[b].push(a); });
     return {
       nodes, edges, adjacency, illustrated: true,
-      special: { start: ids[specialKeys.start], goal: ids[specialKeys.goal], collectibles: specialKeys.collectibles.map((key) => ids[key]) }
+      special: {
+        start: data.special.start,
+        goal: data.special.goal,
+        collectibles: [...data.special.collectibles]
+      }
     };
-  }
-
-  function illustratedClockGraph() {
-    const points = {
-      start:[.055,.752], a1:[.086,.748], a2:[.101,.683], a3:[.105,.602], j1:[.112,.505],
-      left1:[.132,.452], gear1:[.151,.414], left2:[.185,.374], left3:[.166,.319], upper1:[.217,.291],
-      upper2:[.251,.235], upper3:[.302,.179], upper4:[.365,.169], upper5:[.411,.217], upper6:[.449,.275],
-      centralTop:[.497,.292], topR1:[.557,.279], topR2:[.624,.218], topR3:[.694,.258], topR4:[.756,.298],
-      topR5:[.818,.315], goalApproach:[.872,.292], goal:[.907,.183],
-      midL1:[.201,.447], midL2:[.271,.462], midL3:[.323,.429], midL4:[.377,.442], gear2:[.484,.458],
-      midR1:[.549,.449], midR2:[.615,.480], midR3:[.684,.510], midR4:[.755,.528], right1:[.817,.501],
-      right2:[.878,.466], right3:[.914,.405],
-      b1:[.095,.823], b2:[.158,.795], b3:[.219,.758], b4:[.279,.694], b5:[.337,.721], b6:[.401,.758],
-      b7:[.461,.716], b8:[.520,.666], b9:[.580,.699], b10:[.644,.741], b11:[.708,.758], b12:[.766,.742],
-      gear3:[.827,.790], b14:[.881,.761], b15:[.914,.698], b16:[.927,.608],
-      loopL1:[.231,.575], loopL2:[.286,.622], loopL3:[.342,.579], loopL4:[.406,.613],
-      loopR1:[.677,.605], loopR2:[.735,.630], loopR3:[.793,.590], clockDead:[.051,.378], gardenDead:[.219,.563]
-    };
-    const paths = [
-      ["start","a1","a2","a3","j1","left1","gear1","left2","left3","upper1","upper2","upper3","upper4","upper5","upper6","centralTop","topR1","topR2","topR3","topR4","topR5","goalApproach","goal"],
-      ["j1","midL1","midL2","midL3","midL4","gear2","midR1","midR2","midR3","midR4","right1","right2","right3","goalApproach"],
-      ["start","b1","b2","b3","b4","b5","b6","b7","b8","b9","b10","b11","b12","gear3","b14","b15","b16","right2"],
-      ["midL2","loopL1","gardenDead"], ["loopL1","loopL2","b4"], ["loopL2","loopL3","loopL4","b7"],
-      ["midL4","loopL3"], ["gear2","loopL4"], ["midR3","loopR1","loopR2","loopR3","right1"],
-      ["loopR2","b11"], ["loopR3","b12"], ["j1","clockDead"], ["centralTop","topR1","midR1"]
-    ];
-    return buildIllustratedGraph(points, paths, { start:"start", goal:"goal", collectibles:["gear1","gear2","gear3"] });
-  }
-
-  function illustratedDragonGraph() {
-    const points = {
-      start:[.038,.833], a1:[.096,.821], a2:[.143,.774], a3:[.179,.718], a4:[.203,.651], j1:[.201,.581],
-      leftL:[.151,.557], leftShrine:[.112,.516], gem1:[.135,.463], leftU:[.103,.414], leftTop:[.105,.362],
-      weave1:[.154,.339], weave2:[.203,.381], weave3:[.251,.421], weave4:[.283,.472], weave5:[.312,.523],
-      up1:[.247,.332], up2:[.289,.282], up3:[.343,.271], up4:[.392,.314], up5:[.421,.378],
-      up6:[.468,.420], up7:[.514,.386], up8:[.558,.338], up9:[.619,.301], up10:[.680,.321],
-      up11:[.715,.379], up12:[.770,.410], right1:[.825,.425], right2:[.877,.473], right3:[.912,.541],
-      high1:[.579,.268], high2:[.609,.195], high3:[.661,.143], high4:[.716,.151], high5:[.761,.202],
-      high6:[.807,.221], high7:[.850,.191], goal:[.910,.163],
-      c1:[.267,.568], c2:[.337,.592], c3:[.402,.565], gem2:[.479,.557], c5:[.539,.584], c6:[.572,.648],
-      c7:[.630,.699], c8:[.696,.738], c9:[.753,.752], gem3:[.786,.770], c11:[.835,.744], c12:[.881,.697], c13:[.908,.625],
-      low1:[.468,.650], low2:[.520,.713], low3:[.603,.786], low4:[.647,.842], low5:[.726,.866], low6:[.811,.868], low7:[.874,.817],
-      cave1:[.748,.487], cave2:[.793,.531], cave3:[.849,.532], blueDead:[.273,.438], tunnelDead:[.215,.742]
-    };
-    const paths = [
-      ["start","a1","a2","a3","a4","j1","leftL","leftShrine","gem1","leftU","leftTop","weave1","weave2","weave3","weave4","weave5","j1"],
-      ["weave2","up1","up2","up3","up4","up5","up6","up7","up8","up9","up10","up11","up12","right1","right2","right3"],
-      ["up8","high1","high2","high3","high4","high5","high6","high7","goal"],
-      ["j1","c1","c2","c3","gem2","c5","c6","c7","c8","c9","gem3","c11","c12","c13","right3"],
-      ["gem2","low1","low2","c6"], ["low2","low3","low4","low5","low6","low7","c11"],
-      ["up12","cave1","cave2","cave3","right2"], ["cave2","c9"], ["weave4","blueDead"], ["a3","tunnelDead"],
-      ["c3","up5"], ["c5","up7"]
-    ];
-    return buildIllustratedGraph(points, paths, { start:"start", goal:"goal", collectibles:["gem1","gem2","gem3"] });
-  }
-
-  function illustratedSeaGraph() {
-    const points = {
-      start:[.060,.779], a1:[.102,.757], a2:[.144,.718], a3:[.181,.669], a4:[.161,.618], a5:[.132,.573],
-      a6:[.121,.520], shell1:[.116,.451], leftU:[.137,.394], leftTop:[.132,.334], t1:[.169,.291], t2:[.214,.291],
-      t3:[.248,.332], t4:[.271,.389], t5:[.253,.459], t6:[.292,.503],
-      top1:[.309,.334], top2:[.368,.296], top3:[.421,.268], top4:[.479,.222], top5:[.540,.169],
-      top6:[.603,.181], top7:[.654,.211], top8:[.706,.232], top9:[.763,.245], top10:[.817,.254],
-      top11:[.867,.224], goal:[.892,.137],
-      centerL:[.350,.478], center1:[.405,.506], shell2:[.490,.512], center3:[.548,.519], center4:[.602,.487],
-      center5:[.650,.453], center6:[.696,.420], center7:[.751,.406], center8:[.802,.423], center9:[.851,.461], center10:[.886,.523],
-      b1:[.181,.718], b2:[.232,.744], b3:[.290,.720], b4:[.351,.674], b5:[.416,.666], b6:[.478,.701],
-      b7:[.541,.676], b8:[.604,.670], b9:[.660,.717], b10:[.704,.768], shell3:[.731,.780], b12:[.787,.779],
-      b13:[.839,.733], b14:[.887,.681], b15:[.920,.603],
-      loopL1:[.213,.565], loopL2:[.261,.592], loopL3:[.315,.565], loopC1:[.400,.593], loopC2:[.455,.611],
-      loopR1:[.589,.587], loopR2:[.651,.594], loopR3:[.718,.564], village:[.760,.526], moonDead:[.354,.185], reefDead:[.932,.513]
-    };
-    const paths = [
-      ["start","a1","a2","a3","a4","a5","a6","shell1","leftU","leftTop","t1","t2","t3","t4","t5","t6","centerL","center1","shell2","center3","center4","center5","center6","center7","center8","center9","center10","b15"],
-      ["t3","top1","top2","top3","top4","top5","top6","top7","top8","top9","top10","top11","goal"],
-      ["start","b1","b2","b3","b4","b5","b6","b7","b8","b9","b10","shell3","b12","b13","b14","b15"],
-      ["a4","loopL1","loopL2","loopL3","t6"], ["loopL2","b3"],
-      ["centerL","loopC1","loopC2","shell2"], ["loopC1","b5"], ["loopC2","b6"],
-      ["center4","loopR1","loopR2","loopR3","village","center8"], ["loopR2","b9"], ["loopR3","b10"],
-      ["top3","moonDead"], ["center10","reefDead"], ["top9","center7"]
-    ];
-    return buildIllustratedGraph(points, paths, { start:"start", goal:"goal", collectibles:["shell1","shell2","shell3"] });
-  }
-
-  function illustratedStarsGraph() {
-    const points = {
-      start:[.117,.742], a1:[.146,.704], a2:[.181,.662], a3:[.218,.612], a4:[.228,.554], a5:[.192,.503],
-      star1:[.085,.514], left1:[.142,.491], left2:[.188,.443], left3:[.225,.399], left4:[.201,.351], left5:[.211,.315],
-      left6:[.259,.321], left7:[.298,.369], left8:[.339,.427], left9:[.381,.468], left10:[.423,.494],
-      top1:[.306,.315], top2:[.318,.255], top3:[.354,.204], top4:[.341,.169], top5:[.382,.178], top6:[.420,.229],
-      top7:[.461,.259], top8:[.508,.259], top9:[.553,.237], top10:[.593,.272], top11:[.612,.338], top12:[.617,.404],
-      ringL:[.470,.379], star2:[.525,.430], ringR:[.581,.404], ringD:[.578,.515], ringB:[.536,.575], ringBL:[.480,.570],
-      b1:[.232,.677], b2:[.286,.718], b3:[.347,.717], b4:[.397,.757], b5:[.470,.746], b6:[.544,.727],
-      b7:[.615,.696], b8:[.678,.697], star3:[.716,.757], b10:[.778,.747], b11:[.823,.704], b12:[.861,.642],
-      r1:[.675,.436], r2:[.737,.431], r3:[.795,.478], r4:[.850,.527], r5:[.878,.594],
-      goal1:[.761,.349], goal2:[.792,.298], goal3:[.783,.241], goal4:[.806,.202], goal5:[.838,.198], goal:[.860,.150],
-      observatory:[.347,.112], constellation:[.393,.820], orchard:[.914,.496]
-    };
-    const paths = [
-      ["start","a1","a2","a3","a4","a5","left1","star1"],
-      ["left1","left2","left3","left4","left5","left6","left7","left8","left9","left10","ringBL","star2","ringL","left10"],
-      ["left7","top1","top2","top3","top4","top5","top6","top7","top8","top9","top10","top11","top12","ringR","star2"],
-      ["star2","ringR","ringD","ringB","ringBL"],
-      ["a3","b1","b2","b3","b4","b5","b6","b7","b8","star3","b10","b11","b12","r5"],
-      ["top12","r1","r2","r3","r4","r5"], ["r3","orchard"], ["b8","r3"],
-      ["r2","goal1","goal2","goal3","goal4","goal5","goal"],
-      ["top3","observatory"], ["b4","constellation"], ["ringD","b6"]
-    ];
-    return buildIllustratedGraph(points, paths, { start:"start", goal:"goal", collectibles:["star1","star2","star3"] });
-  }
-
-  function illustratedCloudTrainGraph() {
-    const graph = illustratedForestGraph();
-    const ids = Object.fromEntries(graph.nodes.map((node) => [node.key, node.id]));
-    graph.special = {
-      start: ids.start,
-      goal: ids.goal,
-      collectibles: [ids.top8, ids.bridge1, ids.lamp3]
-    };
-    return graph;
-  }
-
-  function illustratedMoonLibraryGraph() {
-    const points = {
-      start:[.071,.746], s1:[.099,.701], s2:[.129,.655], s3:[.163,.618], hubL:[.202,.586],
-      g1:[.180,.540], g2:[.148,.503], g3:[.124,.455], g4:[.131,.398], page1:[.155,.332],
-      g6:[.206,.334], g7:[.244,.362], g8:[.279,.408], hubC:[.323,.430],
-      u1:[.196,.461], u2:[.234,.450], u3:[.270,.475], u4:[.211,.278], u5:[.260,.279],
-      u6:[.306,.317], u7:[.345,.365], bookArch:[.278,.226], hedgeDead:[.083,.305],
-      libraryDead:[.257,.522], gd1:[.207,.400],
-      low0:[.108,.806], low1:[.159,.834], low2:[.211,.802], l1:[.223,.631], l2:[.266,.650],
-      l3:[.305,.628], bridgeW:[.345,.606], riverHub:[.387,.637], rl1:[.398,.735], boatDead:[.338,.702],
-      c1:[.365,.397], c2:[.410,.375], c3:[.456,.350], c4:[.499,.331], c5:[.543,.329],
-      towerTop:[.574,.275], cLow1:[.352,.488], cLow2:[.398,.508], cLow3:[.446,.500],
-      stairDead:[.374,.565], towerInner1:[.428,.428], towerInner2:[.475,.447],
-      t1:[.552,.202], t2:[.505,.164], t3:[.448,.185], balconyDead:[.445,.292],
-      r1:[.430,.672], page2:[.468,.751], r3:[.520,.751], r4:[.564,.707], bridgeE:[.616,.693],
-      islandHub:[.666,.715], dock1:[.719,.758], dock2:[.774,.809], dockEnd:[.756,.861],
-      rivUp:[.489,.565], rivMid:[.540,.600], midEast:[.664,.624], le1:[.708,.648], eastLower:[.707,.574],
-      eastHub:[.584,.373], o1:[.622,.320], o2:[.657,.276], page3:[.713,.294], o4:[.758,.328],
-      om1:[.623,.410], om2:[.666,.438], om3:[.716,.437], gearDead:[.688,.374],
-      ot1:[.658,.204], ot2:[.707,.159], ot3:[.758,.194], owlDead:[.725,.225],
-      rightHub:[.796,.398], e1:[.839,.426], e2:[.875,.422], topR:[.816,.337],
-      lowerR1:[.811,.492], lowerR2:[.852,.536], lowerR3:[.895,.544], bookDead:[.862,.625],
-      i2:[.728,.702], goal:[.930,.438]
-    };
-    const paths = [
-      ["start","s1","s2","s3","hubL","g1","g2","g3","g4","page1","g6","g7","g8","hubC","c1","c2","c3","c4","c5","eastHub","o1","o2","page3","o4","rightHub","e1","e2","goal"],
-      ["page1","u4","u5","u6","u7","hubC"], ["u5","bookArch"], ["page1","hedgeDead"],
-      ["g2","u1","u2","u3","g8"], ["u3","libraryDead"], ["g6","gd1","u1"],
-      ["start","low0","low1","low2","l2","l1","hubL"],
-      ["hubL","l1","l2","l3","bridgeW","riverHub","r1","page2","r3","r4","bridgeE","islandHub","le1","eastLower","lowerR1","lowerR2","lowerR3","goal"],
-      ["riverHub","rl1","page2"], ["riverHub","boatDead"],
-      ["hubC","cLow1","cLow2","cLow3","c4"], ["cLow2","stairDead"],
-      ["c3","towerInner1","towerInner2","cLow3"], ["c2","balconyDead"],
-      ["c5","towerTop","t1","t2","t3","c3"], ["towerTop","ot1","o2"],
-      ["eastHub","om1","om2","om3","o4"], ["om2","gearDead"],
-      ["o2","ot1","ot2","ot3","page3"], ["page3","owlDead"],
-      ["rightHub","topR","e2"], ["rightHub","lowerR1"],
-      ["cLow3","rivUp","rivMid","r4"], ["bridgeE","midEast","eastLower"],
-      ["islandHub","i2","lowerR2"], ["islandHub","dock1","dock2"], ["dock1","dockEnd"],
-      ["lowerR2","bookDead"]
-    ];
-    return buildIllustratedGraph(points, paths, { start:"start", goal:"goal", collectibles:["page1","page2","page3"] });
-  }
-
-  function carveMaze(base, rng) {
-    const candidates = Array.from({ length: base.nodes.length }, () => []);
-    base.edges.forEach(([a,b]) => { candidates[a].push(b); candidates[b].push(a); });
-    const start = Math.floor(rng() * base.nodes.length);
-    const stack = [start], visited = new Set([start]), carved = [];
-    while (stack.length) {
-      const current = stack[stack.length - 1];
-      const options = shuffle(candidates[current].filter((n) => !visited.has(n)), rng);
-      if (!options.length) { stack.pop(); continue; }
-      const next = options[0];
-      visited.add(next); stack.push(next); carved.push([current, next]);
-    }
-    const adjacency = Array.from({ length: base.nodes.length }, () => []);
-    carved.forEach(([a,b]) => { adjacency[a].push(b); adjacency[b].push(a); });
-    return { nodes: base.nodes, edges: carved, adjacency };
   }
 
   function bfs(graph, start) {
@@ -530,8 +201,6 @@
     return { distance, parent };
   }
 
-  function graphDistance(graph, a, b) { return bfs(graph, a).distance[b]; }
-
   function validateGraph(graph, theme) {
     if (graph.nodes.length < 50 || graph.adjacency.length !== graph.nodes.length) throw new Error(`${theme}: maze is not complex enough`);
     if (graph.edges.length < graph.nodes.length || graph.adjacency.filter((links) => links.length >= 3).length < 4) throw new Error(`${theme}: maze needs more loops and crossroads`);
@@ -545,44 +214,15 @@
     if (reach[special.goal] < 12 || [special.goal,...special.collectibles].some((id) => reach[id] < 4)) throw new Error(`${theme}: challenge route is too short`);
   }
 
-  function chooseSpecialNodes(graph) {
-    const start = graph.nodes.reduce((best, node) => (node.x + (1 - node.y) < graph.nodes[best].x + (1 - graph.nodes[best].y) ? node.id : best), 0);
-    const startMap = bfs(graph, start);
-    const goal = startMap.distance.reduce((bestDist, value, id) => value > bestDist.value ? { value, id } : bestDist, { value: -1, id: start }).id;
-    let candidates = graph.nodes.filter((node) => graph.adjacency[node.id].length === 1 && node.id !== start && node.id !== goal).map((node) => node.id);
-    if (candidates.length < 3) candidates = graph.nodes.map((node) => node.id).filter((id) => id !== start && id !== goal);
-    const chosen = [];
-    while (chosen.length < 3 && candidates.length) {
-      const best = candidates.reduce((winner, id) => {
-        const anchors = [start, goal, ...chosen];
-        const score = Math.min(...anchors.map((anchor) => graphDistance(graph, id, anchor)));
-        return score > winner.score ? { id, score } : winner;
-      }, { id: candidates[0], score: -1 });
-      chosen.push(best.id); candidates = candidates.filter((id) => id !== best.id);
-    }
-    return { start, goal, collectibles: chosen };
-  }
-
   function startChapter(chapterIndex = state.chapter) {
     stopNarration();
     state.chapter = chapterIndex;
     state.storyId = chapters[chapterIndex].storyId;
     state.unlocked = readStoryProgress(state.storyId).unlocked;
     state.seed = (state.seed + 104729) % 2147483647;
-    const rng = mulberry32(state.seed + chapterIndex * 99991 + state.difficulty * 7127);
-    const illustratedFactories = {
-      forest: illustratedForestGraph, clock: illustratedClockGraph, dragon: illustratedDragonGraph,
-      sea: illustratedSeaGraph, stars: illustratedStarsGraph, cloudtrain: illustratedCloudTrainGraph,
-      moonlibrary: illustratedMoonLibraryGraph
-    };
-    const factory = illustratedFactories[chapters[chapterIndex].theme];
-    if (factory) state.graph = factory();
-    else {
-      const base = createBase(chapters[chapterIndex].theme, state.difficulty, rng);
-      state.graph = carveMaze(base, rng);
-    }
-    if (state.graph.illustrated) validateGraph(state.graph, chapters[chapterIndex].theme);
-    const special = state.graph.special || chooseSpecialNodes(state.graph);
+    state.graph = illustratedGraph(chapters[chapterIndex].theme);
+    validateGraph(state.graph, chapters[chapterIndex].theme);
+    const special = state.graph.special;
     state.current = special.start; state.goal = special.goal; state.collectibles = special.collectibles;
     state.found = new Set(); state.trail = [state.current]; state.steps = 0;
     state.completed = false; state.dragging = false; state.activePointerId = null;
@@ -1081,7 +721,7 @@
     if(collectibleIndex!==-1&&!state.found.has(next)){
       state.found.add(next);updateCollectionUI();showToast(chapters[state.chapter].finds[collectibleIndex]);playCollectSound();
       stage.classList.remove("found-glow"); void stage.offsetWidth; stage.classList.add("found-glow");
-      $("#storyTip").innerHTML=`<small>找到了 ${state.found.size}/3</small><span>${state.found.size===3?"出口已经亮起来了！":"还有宝物藏在别的岔路里。"}</span>`;
+      $("#storyTip").innerHTML=`<small>找到了 ${state.found.size}/${state.collectibles.length}</small><span>${state.found.size===state.collectibles.length?"出口已经亮起来了！":"还有宝物藏在别的岔路里。"}</span>`;
     }
     if(next===state.goal){
       if(state.found.size===state.collectibles.length)completeChapter();
@@ -1142,7 +782,7 @@
     const targets=state.collectibles.filter((id)=>!state.found.has(id));if(!targets.length)targets.push(state.goal);
     const options=targets.map((id)=>shortestPath(id)).filter((path)=>path.length);
     const hintLength=[11,7,4][state.difficulty];options.sort((a,b)=>a.length-b.length);state.hintPath=options[0].slice(0,Math.min(hintLength,options[0].length));
-    showToast(state.found.size<3?"金色微光指向最近的一件宝物。":"所有宝物都找到了，去追随通往出口的光吧。",2200);playTone(660,.18,"sine",.03);requestDraw();
+    showToast(state.found.size<state.collectibles.length?"金色微光指向最近的一件宝物。":"所有宝物都找到了，去追随通往出口的光吧。",2200);playTone(660,.18,"sine",.03);requestDraw();
     setTimeout(()=>{state.hintPath=[];requestDraw();},2400);
   }
 

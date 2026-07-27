@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>迷宫关卡标注工具</title>
+  <style>
+    :root{color-scheme:dark;font-family:ui-rounded,"PingFang SC",system-ui,sans-serif;background:#10212a;color:#f8f0d5}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at top,#294752,#10212a 58%)}
+    button,input,select,textarea{font:inherit}button,select,input{min-height:44px;border:1px solid #819aa0;border-radius:12px;background:#f7edcf;color:#18323b;padding:.55rem .8rem}
+    button{font-weight:800;cursor:pointer}button[aria-pressed="true"]{background:#efb94f;color:#172b32;border-color:#ffe29d}
+    header{display:flex;gap:.7rem;align-items:center;flex-wrap:wrap;padding:12px 14px;background:#10212ae8;position:sticky;top:0;z-index:4;border-bottom:1px solid #ffffff22}
+    header h1{font-size:1.15rem;margin:0 auto 0 0}.group{display:flex;gap:.45rem;align-items:center;flex-wrap:wrap}
+    main{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:12px;padding:12px}
+    .stage{position:relative;min-width:0;border:1px solid #ffffff33;border-radius:18px;overflow:hidden;background:#0a161c;box-shadow:0 18px 50px #0006}
+    canvas{display:block;width:100%;height:auto;touch-action:none}
+    aside{background:#f6efd9;color:#18323b;border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:10px;max-height:calc(100vh - 90px);overflow:auto}
+    aside h2{font-size:1rem;margin:0}.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}.stats b{background:#dbe4d8;padding:8px;border-radius:10px}
+    label{display:grid;gap:4px;font-weight:700;font-size:.88rem}textarea{width:100%;min-height:230px;border-radius:12px;background:#10212a;color:#d9f0da;padding:10px;font:12px/1.45 ui-monospace,monospace;resize:vertical}
+    .notice{min-height:44px;padding:9px;border-radius:10px;background:#e4ddc6}.notice.error{background:#ffd1c7;color:#701f17}.notice.ok{background:#d5ebca;color:#24552b}
+    .legend{display:flex;gap:8px;flex-wrap:wrap;font-size:.8rem}.legend i{width:12px;height:12px;border-radius:50%;display:inline-block;margin-right:3px}
+    @media(max-width:850px){main{grid-template-columns:1fr}aside{max-height:none}header{position:static}}
+  </style>
+  <script src="forest.js"></script>
+  <script src="clock.js"></script>
+  <script src="dragon.js"></script>
+  <script src="sea.js"></script>
+  <script src="stars.js"></script>
+  <script src="cloudtrain.js"></script>
+  <script src="moonlibrary.js"></script>
+</head>
+<body>
+  <header>
+    <h1>迷宫关卡标注工具</h1>
+    <div class="group">
+      <select id="sceneSelect" aria-label="选择插画">
+        <option value="forest">森林</option><option value="clock">钟城</option><option value="dragon">睡龙</option>
+        <option value="sea">月亮海</option><option value="stars">星星庭院</option>
+        <option value="cloudtrain">云朵列车</option><option value="moonlibrary">月亮书库</option>
+      </select>
+      <input id="imageFile" type="file" accept="image/*" aria-label="选择本地插画" />
+      <button id="loadExisting" type="button">载入现有关卡</button>
+      <button id="clearLevel" type="button">从零开始</button>
+    </div>
+    <div class="group" id="modes" aria-label="标注模式">
+      <button type="button" data-mode="node" aria-pressed="true">点节点</button>
+      <button type="button" data-mode="edge">连线</button>
+      <button type="button" data-mode="start">标起点</button>
+      <button type="button" data-mode="goal">标终点</button>
+      <button type="button" data-mode="collectible">标宝物</button>
+    </div>
+    <button id="undo" type="button">撤销</button>
+  </header>
+  <main>
+    <section class="stage" aria-label="插画标注画布">
+      <canvas id="editorCanvas" width="1672" height="941"></canvas>
+    </section>
+    <aside>
+      <h2>关卡状态</h2>
+      <div class="stats"><b>节点 <span id="nodeCount">0</span></b><b>边 <span id="edgeCount">0</span></b><b>宝物 <span id="itemCount">0</span></b><b>模式 <span id="modeName">节点</span></b></div>
+      <div class="legend"><span><i style="background:#68d7ff"></i>节点</span><span><i style="background:#5cf28b"></i>起点</span><span><i style="background:#ff6f69"></i>终点</span><span><i style="background:#ffd95c"></i>宝物</span></div>
+      <label>导出关卡 ID<input id="levelId" value="forest-editor-test" /></label>
+      <label>任务文案里的宝物数量<input id="missionCount" type="number" min="1" value="3" /></label>
+      <div class="group">
+        <button id="generate" type="button">生成导出内容</button>
+        <button id="download" type="button">下载 .js</button>
+      </div>
+      <div id="notice" class="notice">选择插画后点节点；连线模式下依次点两个节点。</div>
+      <textarea id="exportOutput" aria-label="导出内容" spellcheck="false"></textarea>
+    </aside>
+  </main>
+  <script>
+    (() => {
+      "use strict";
+      const canvas = document.querySelector("#editorCanvas");
+      const ctx = canvas.getContext("2d");
+      const sceneSelect = document.querySelector("#sceneSelect");
+      const image = new Image();
+      const sceneFiles = {
+        forest:"forest-maze-v1.webp",clock:"clock-maze-v1.webp",dragon:"dragon-maze-v1.webp",
+        sea:"sea-maze-v1.webp",stars:"stars-maze-v1.webp",cloudtrain:"cloud-train-maze-v1.webp",
+        moonlibrary:"moon-library-maze-v1.webp"
+      };
+      let level = emptyLevel();
+      let mode = "node";
+      let pendingEdge = null;
+      let history = [];
+
+      function emptyLevel() {
+        return { id: "editor-test", nodes: [], edges: [], special: { start: null, goal: null, collectibles: [] } };
+      }
+      function snapshot() { history.push(JSON.stringify(level)); if (history.length > 100) history.shift(); }
+      function setNotice(text, type = "") {
+        const notice = document.querySelector("#notice");
+        notice.textContent = text; notice.className = "notice " + type;
+      }
+      function setScene(theme) {
+        image.src = "../assets/scenes/" + sceneFiles[theme];
+        document.querySelector("#levelId").value = theme + "-editor-test";
+      }
+      function updateStats() {
+        document.querySelector("#nodeCount").textContent = level.nodes.length;
+        document.querySelector("#edgeCount").textContent = level.edges.length;
+        document.querySelector("#itemCount").textContent = level.special.collectibles.length;
+        document.querySelector("#modeName").textContent = ({node:"节点",edge:"连线",start:"起点",goal:"终点",collectible:"宝物"})[mode];
+      }
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (image.complete && image.naturalWidth) ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+        ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.lineWidth = 8; ctx.strokeStyle = "rgba(80,216,255,.82)";
+        level.edges.forEach(([a,b]) => {
+          const from = level.nodes[a], to = level.nodes[b]; if (!from || !to) return;
+          ctx.beginPath(); ctx.moveTo(from.x * canvas.width, from.y * canvas.height);
+          ctx.lineTo(to.x * canvas.width, to.y * canvas.height); ctx.stroke();
+        });
+        level.nodes.forEach((node) => {
+          let color = "#68d7ff";
+          if (node.id === level.special.start) color = "#5cf28b";
+          else if (node.id === level.special.goal) color = "#ff6f69";
+          else if (level.special.collectibles.includes(node.id)) color = "#ffd95c";
+          ctx.beginPath(); ctx.arc(node.x * canvas.width, node.y * canvas.height, node.id === pendingEdge ? 17 : 12, 0, Math.PI * 2);
+          ctx.fillStyle = "#10212a"; ctx.fill(); ctx.lineWidth = 6; ctx.strokeStyle = color; ctx.stroke();
+          ctx.fillStyle = "#fff"; ctx.font = "bold 15px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillText(String(node.id), node.x * canvas.width, node.y * canvas.height);
+        });
+        updateStats();
+      }
+      function canvasPoint(event) {
+        const rect = canvas.getBoundingClientRect();
+        return { x: (event.clientX - rect.left) / rect.width, y: (event.clientY - rect.top) / rect.height };
+      }
+      function nearest(point) {
+        let best = null, distance = Infinity;
+        level.nodes.forEach((node) => {
+          const value = Math.hypot(node.x - point.x, node.y - point.y);
+          if (value < distance) { distance = value; best = node.id; }
+        });
+        return distance <= 0.035 ? best : null;
+      }
+      canvas.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        const point = canvasPoint(event);
+        if (mode === "node") {
+          snapshot(); const id = level.nodes.length;
+          level.nodes.push({ id, key: "n" + id, x: Number(point.x.toFixed(5)), y: Number(point.y.toFixed(5)) });
+        } else {
+          const id = nearest(point);
+          if (id === null) return setNotice("请点在已有节点上。", "error");
+          if (mode === "edge") {
+            if (pendingEdge === null) pendingEdge = id;
+            else if (pendingEdge !== id) {
+              const exists = level.edges.some(([a,b]) => (a === pendingEdge && b === id) || (a === id && b === pendingEdge));
+              if (!exists) { snapshot(); level.edges.push([pendingEdge, id]); }
+              pendingEdge = null;
+            }
+          } else if (mode === "start" || mode === "goal") {
+            snapshot(); level.special[mode] = id;
+          } else {
+            snapshot();
+            const index = level.special.collectibles.indexOf(id);
+            if (index >= 0) level.special.collectibles.splice(index, 1);
+            else level.special.collectibles.push(id);
+          }
+        }
+        setNotice("已记录。"); draw();
+      });
+      document.querySelectorAll("[data-mode]").forEach((button) => button.addEventListener("click", () => {
+        mode = button.dataset.mode; pendingEdge = null;
+        document.querySelectorAll("[data-mode]").forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+        draw();
+      }));
+      sceneSelect.addEventListener("change", () => setScene(sceneSelect.value));
+      document.querySelector("#imageFile").addEventListener("change", (event) => {
+        const file = event.target.files[0]; if (!file) return;
+        image.src = URL.createObjectURL(file);
+      });
+      document.querySelector("#loadExisting").addEventListener("click", () => {
+        const source = window.STAR_MAZE_LEVELS[sceneSelect.value];
+        if (!source) return setNotice("找不到现有关卡。", "error");
+        snapshot(); level = JSON.parse(JSON.stringify(source)); pendingEdge = null;
+        document.querySelector("#levelId").value = source.id + "-editor-test";
+        setNotice("已载入 " + source.id + "，可以继续修改或直接导出。", "ok"); draw();
+      });
+      document.querySelector("#clearLevel").addEventListener("click", () => {
+        snapshot(); level = emptyLevel(); pendingEdge = null; setNotice("已新建空关卡。"); draw();
+      });
+      document.querySelector("#undo").addEventListener("click", () => {
+        if (!history.length) return; level = JSON.parse(history.pop()); pendingEdge = null; draw();
+      });
+      function exportedCode() {
+        const id = document.querySelector("#levelId").value.trim();
+        if (!id) throw new Error("请填写关卡 ID。");
+        const missionCount = Number(document.querySelector("#missionCount").value);
+        if (!Number.isInteger(missionCount) || missionCount !== level.special.collectibles.length) {
+          throw new Error("任务文案数量必须等于宝物数量。");
+        }
+        if (level.nodes.length < 50) throw new Error("至少需要 50 个节点。");
+        if (level.special.start === null || level.special.goal === null) throw new Error("必须标记起点和终点。");
+        const data = { ...level, id };
+        return "window.STAR_MAZE_LEVELS = window.STAR_MAZE_LEVELS || {};\n" +
+          "window.STAR_MAZE_LEVELS[" + JSON.stringify(id) + "] = " + JSON.stringify(data, null, 2) + ";\n";
+      }
+      document.querySelector("#generate").addEventListener("click", () => {
+        try {
+          const code = exportedCode(); document.querySelector("#exportOutput").value = code;
+          setNotice("导出内容已生成；请再运行 tools/validate-levels.mjs 校验。", "ok");
+        } catch (error) { setNotice(error.message, "error"); }
+      });
+      document.querySelector("#download").addEventListener("click", () => {
+        try {
+          const code = exportedCode();
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
+          link.download = document.querySelector("#levelId").value.trim() + ".js";
+          link.click(); URL.revokeObjectURL(link.href);
+          setNotice("已下载关卡文件。", "ok");
+        } catch (error) { setNotice(error.message, "error"); }
+      });
+      image.addEventListener("load", draw);
+      setScene("forest"); draw();
+    })();
+  </script>
+</body>
+</html>

@@ -1,10 +1,13 @@
-const CACHE = "star-whale-maze-v31";
+const CACHE = "star-whale-maze-v32";
 const ASSETS = [
-  "./", "./index.html", "./styles.css?v=31", "./app.js?v=31", "./manifest.webmanifest?v=31",
-  "./assets/scenes/forest-maze-v1.png",
-  "./assets/scenes/clock-maze-v1.png", "./assets/scenes/dragon-maze-v1.png",
-  "./assets/scenes/sea-maze-v1.png", "./assets/scenes/stars-maze-v1.png", "./assets/scenes/cloud-train-maze-v1.png",
-  "./assets/scenes/moon-library-maze-v1.png",
+  "./", "./index.html", "./styles.css?v=32", "./app.js?v=32", "./manifest.webmanifest?v=32",
+  "./levels/forest.js?v=32", "./levels/clock.js?v=32", "./levels/dragon.js?v=32",
+  "./levels/sea.js?v=32", "./levels/stars.js?v=32", "./levels/cloudtrain.js?v=32",
+  "./levels/moonlibrary.js?v=32",
+  "./assets/scenes/forest-maze-v1.webp",
+  "./assets/scenes/clock-maze-v1.webp", "./assets/scenes/dragon-maze-v1.webp",
+  "./assets/scenes/sea-maze-v1.webp", "./assets/scenes/stars-maze-v1.webp", "./assets/scenes/cloud-train-maze-v1.webp",
+  "./assets/scenes/moon-library-maze-v1.webp",
   "./icons/icon.svg", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"
 ];
 
